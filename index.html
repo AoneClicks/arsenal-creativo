@@ -1579,13 +1579,15 @@ Escribe la variación completa. Responde SOLO con un objeto JSON con esta forma:
  "textos": ["0-3 s: \\"TEXTO EN PANTALLA\\""]
 }
 Reglas:
-- Guion de 20 a 25 s en 4 o 5 bloques: gancho, producto, usos o beneficios, cierre con pago al recibir, envío gratis si aplica y escasez. Español colombiano, frases cortas.
+- Guion de 20 a 25 s en 4 o 5 bloques: gancho, producto, usos o beneficios, cierre con pago al recibir y envío gratis si aplica. Español colombiano, frases cortas.
+- LOS PRIMEROS 3 SEGUNDOS deciden si ven el video: F1/C1 y la primera frase muestran el resultado más impactante del producto o el problema que resuelve (lo que pasa en el video ganador). Nunca arranques con la oferta, el precio, "envío gratis" ni el logo: eso va solo en el cierre.
+- Urgencia creíble: nunca "solo por hoy", "hoy", "últimas horas" ni "quedan pocos" (el mismo anuncio corre varios días y pierde credibilidad). Usa "Promo de temporada", "Precio de temporada" o "Hasta agotar existencias".
 - Entre 6 y 7 tomas (F1…F7), cada frase de la escaleta con su imagen y clip; una imagen puede repetirse en dos frases.
 - subject_en: escribe {PRODUCTO} donde va la descripción exacta del producto (el sistema la reemplaza); puedes añadir cosas alrededor, por ejemplo "a row of still ornaments … and at the end {PRODUCTO}".
 - adjuntar: "P0" o "P0 + F1" (si repite lugar) o "P0 + A1" (si sale la persona). La persona (ancla) solo aparece en la última toma o en máximo 2 tomas: persona=true, reference_en "A1 for her, P0 for the product".
 - Escenarios, comidas y casas típicos de ${i.pais}. Cámara con movimiento (push in, orbit, tracking con parallax). El producto solo hace lo que de verdad hace.
 - Clip: qué se mueve en 8 s, cámara y continuidad. Nunca texto en las imágenes.
-- 4 textos en pantalla con sus segundos, en MAYÚSCULAS.`;
+- 4 textos en pantalla con sus segundos, en MAYÚSCULAS, cortos (máx 5 palabras) y con su posición: formato "0-3 s: \"TEXTO\" · centro". El texto de 0-3 s refuerza el gancho visual (nunca oferta). Todos van dentro de la zona segura de Reels y Stories: centro de la pantalla, lejos de los bordes; nunca en el 14 % de arriba, el 35 % de abajo ni pegados a los lados. La oferta (pago al recibir, envío, combo, "Promo de temporada") va solo en el último texto.`;
 }
 
 function rmMetaPrompt(i, r){
@@ -1612,6 +1614,7 @@ Responde SOLO con un objeto JSON con esta forma exacta (todo en español):
  "conjunto": [{"campo":"Ubicación de la conversión","valor":"","nota":""},${wa ? `{"campo":"Apps de mensajes","valor":"marcar solo WhatsApp y elegir el número","nota":""},` : `{"campo":"Evento de conversión","valor":"","nota":""},`}{"campo":"Objetivo de rendimiento","valor":"","nota":"si se deja como viene o cuál elegir"},{"campo":"Costo por resultado deseado","valor":"","nota":""},{"campo":"Calendario / hora de inicio","valor":"","nota":""},{"campo":"Ubicación geográfica","valor":"","nota":""},{"campo":"Edad","valor":"","nota":""},{"campo":"Sexo","valor":"","nota":""},{"campo":"Público (Advantage+ o segmentación detallada)","valor":"","nota":""},{"campo":"Ubicaciones","valor":"","nota":""},{"campo":"Nombre del conjunto","valor":"","nota":""}],
  "anuncio": [{"campo":"Identidad (página de Facebook y cuenta de Instagram)","valor":"","nota":""},{"campo":"Formato","valor":"","nota":""},{"campo":"Medio","valor":"","nota":""},{"campo":"Llamada a la acción","valor":"${wa ? "Enviar mensaje de WhatsApp" : "Comprar"}","nota":""},${wa ? `{"campo":"Plantilla de mensaje (mensaje de bienvenida y preguntas frecuentes)","valor":"","nota":""},` : `{"campo":"Destino / URL","valor":"","nota":""},`}{"campo":"Mejoras de contenido Advantage+","valor":"","nota":""},{"campo":"Subtítulos e idioma","valor":"","nota":""}],
  "copies": [{"va_con":"V1","nombre_anuncio":"V1_muy_G0","titulo":"máx 40 caracteres, enganchable: curiosidad, beneficio o urgencia","descripcion":"máx 30 caracteres, enganchable","texto_principal":"texto principal completo con emojis moderados, beneficio, oferta, pago contraentrega, envío y una invitación a escribir","cta":"${wa ? "Enviar mensaje de WhatsApp" : "Comprar"}"}],
+ "imagenes": [{"id":"IMG1","nombre":"nombre corto del anuncio de imagen","concepto":"qué muestra y por qué detiene el scroll","action_en":"what the product is doing in the photo, in English","environment_en":"Colombian setting, in English","lighting_en":"","camera_en":"","texto_encima":"titular corto en MAYÚSCULAS para poner en Canva o CapCut, dentro de la zona segura","texto_secundario":"línea pequeña con la oferta","titulo":"máx 40 caracteres","descripcion":"máx 30 caracteres","texto_principal":"texto principal del anuncio de imagen"}],
  "titulos_extra": ["5 títulos alternativos enganchables"],
  "descripciones_extra": ["4 descripciones alternativas enganchables"],
  "textos_extra": ["3 textos principales alternativos con otros ángulos"],
@@ -1620,7 +1623,7 @@ Responde SOLO con un objeto JSON con esta forma exacta (todo en español):
  "reglas": [{"si":"condición medible con cifras","entonces":"acción"}],
  "errores": ["error común que hace perder ventas y cómo evitarlo"]
 }
-Reglas: un objeto en copies por cada variación (${vs.map(v=>S(v.id)).join(", ")}), con nombre_anuncio como V1_muy_G0, V2_medio_G0, V3_no_G0. Entre 5 y 7 reglas de cortar o escalar con cifras${wa ? ` (costo por conversación máximo ${money(cierre)} y CPA máximo ${money(nums.maxCPA)})` : ` basadas en el CPA máximo de ${money(nums.maxCPA)}`}. 4 o 5 errores. Textos en español colombiano natural, sin prometer lo que el producto no hace y cumpliendo las políticas de publicidad de Meta (sin antes/después engañosos ni afirmaciones de salud).`;
+Reglas: exactamente 2 imagenes (anuncios de imagen 4:5 para poner en cada conjunto junto al video, así Meta tiene más opciones para encontrar compradores): IMG1 muestra el resultado más impactante del producto y IMG2 el combo u oferta con el producto real; el texto va encima después, nunca dentro de la imagen generada. Urgencia creíble en todos los textos: nunca "solo por hoy", "hoy" ni "quedan pocos"; usa "Promo de temporada" o "Hasta agotar existencias". Un objeto en copies por cada variación (${vs.map(v=>S(v.id)).join(", ")}), con nombre_anuncio como V1_muy_G0, V2_medio_G0, V3_no_G0. Entre 5 y 7 reglas de cortar o escalar con cifras${wa ? ` (costo por conversación máximo ${money(cierre)} y CPA máximo ${money(nums.maxCPA)})` : ` basadas en el CPA máximo de ${money(nums.maxCPA)}`}. 4 o 5 errores. Textos en español colombiano natural, sin prometer lo que el producto no hace y cumpliendo las políticas de publicidad de Meta (sin antes/después engañosos ni afirmaciones de salud).`;
 }
 
 function fillProduct(s, p){ return S(s,"{PRODUCTO}").replace(/\{PRODUCTO\}/g, `the exact ${S(p.nombre_corto_en,"product").replace(/^the\s+/i,"")} from the attached product sheet: ${S(p.subject_en)}`); }
@@ -1721,6 +1724,17 @@ root.querySelectorAll('nav.tabs button').forEach(function(b){b.onclick=function(
 root.querySelectorAll('button.cp').forEach(function(b){b.onclick=function(){var pre=document.getElementById(b.dataset.t);var t=pre.innerText;var done=function(){b.textContent='Copiado';b.classList.add('ok');setTimeout(function(){b.textContent='Copiar';b.classList.remove('ok')},1600)};var sel=function(){var r=document.createRange();r.selectNodeContents(pre);var s=getSelection();s.removeAllRanges();s.addRange(r);b.textContent='Ctrl+C'};try{navigator.clipboard.writeText(t).then(done,sel)}catch(e){sel()}}});
 var h=location.hash.slice(1);if(h&&document.getElementById(h)&&document.getElementById(h).classList.contains('tab'))show(h);})();`;
 
+const RM_SAFE = `<div class="card"><b>Antes de exportar, revisa estas 3 cosas:</b><br>• <b>Primeros 3 segundos:</b> arranca con el gancho visual (el resultado o el problema). Nunca con "ENVÍO GRATIS", el precio ni el logo.<br>• <b>Zona segura:</b> textos y subtítulos en el centro. Deja libre el 14 % de arriba, el 35 % de abajo y un margen a los lados: ahí Reels y Stories ponen botones y el nombre de la cuenta. En CapCut activa la guía de zona segura o revisa la vista previa de Reels en Meta.<br>• <b>Urgencia creíble:</b> nada de "SOLO POR HOY" ni "QUEDAN POCOS". Usa "PROMO DE TEMPORADA" o "HASTA AGOTAR EXISTENCIAS".</div>`;
+function rmPromptImg(m, r){ const p = r.producto || {}; return `[STYLE LOCK]: Scroll-stopping social ad photo, cinematic product photography, true to life color, crisp detail
+[SUBJECT]: ${fillProduct("{PRODUCTO}", p)}
+[ACTION]: ${S(m.action_en)}
+[ENVIRONMENT]: ${S(m.environment_en)}
+[LIGHTING]: ${S(m.lighting_en)}
+[CAMERA]: ${S(m.camera_en)}; leave clean empty space in the upper-middle area for a headline
+[ASPECT]: 4:5 vertical
+[REFERENCE]: P0
+[PRODUCT]: ${S(p.lock_en)}
+[EXCLUDE]: ${EXCL}`; }
 function rmBody(r){
   const p = r.producto || {}, m = r.mercado || {}, g = r.ganador || {};
   const vs = A(r.variaciones), nums = rmNumbers(r);
@@ -1744,7 +1758,8 @@ function rmBody(r){
 <li><b>Flow · imagen:</b> genera las imágenes F en orden con lo que dice "Adjuntar".</li>
 <li><b>Flow · video:</b> genera cada clip C con su F como start frame. <b>Todos van con video sin sonido</b>: la voz y la música se ponen encima.</li>
 <li><b>Fish Audio o ElevenLabs:</b> pega el guion corrido de la variación y genera la voz.</li>
-<li><b>CapCut:</b> monta unos 3 s por clip, voz encima, música de la librería al 20 %, subtítulos palabra por palabra y los textos de la variación con entrada de rebote.</li>
+<li><b>CapCut:</b> monta unos 3 s por clip, voz encima, música de la librería al 20 %, subtítulos palabra por palabra y los textos de la variación con entrada de rebote. <b>Los primeros 3 s muestran el gancho visual, nunca la oferta</b>, y todos los textos van en la <b>zona segura</b> (centro, lejos de los bordes).</li>
+<li><b>Flow · imagen:</b> genera los 2 anuncios de imagen de la pestaña 📣 Cómo pautar en Meta y ponles el texto encima en Canva o CapCut.</li>
 <li><b>Exporta</b> como ${vs.map((v,k)=>`${S(v.id,"V"+(k+1))}_${["muy","medio","no"][k]||"x"}_G0`).join(", ")}.</li></ol>`;
   inicio += `<div class="card"><b>Regla del producto:</b> ${esc(S(p.regla))}</div>`;
 
@@ -1785,7 +1800,7 @@ function rmBody(r){
     });
     const so = r.sonido || {};
     s += `<h3>Sonido</h3><div class="card">Los clips van <b>sin sonido</b> en Flow; todo el sonido se pone en el montaje:<br>• <b>Música:</b> ${esc(S(so.musica))}<br>• <b>Efectos:</b> ${esc(S(so.efectos))}<br>• <b>Voz:</b> ${esc(S(so.voz))}${so.ambient_en ? `<br>Si prefieres generar los clips con audio en Flow, agrega al final del prompt: <code>[AMBIENT]: ${esc(S(so.ambient_en).replace(/^\[AMBIENT\]:\s*/i,""))}</code>.` : ""}</div>`;
-    s += `<h3>Textos en pantalla (CapCut)</h3><ol class="steps">${A(d.textos).map(x=>`<li>${esc(S(x))}</li>`).join("")}</ol>`;
+    s += `<h3>Textos en pantalla (CapCut)</h3>${RM_SAFE}<ol class="steps">${A(d.textos).map(x=>`<li>${esc(S(x))}</li>`).join("")}</ol>`;
     return s;
   });
 
@@ -1814,6 +1829,17 @@ function rmBody(r){
         meta += pb(`${S(c.va_con)} · Título`, "", S(c.titulo));
         meta += pb(`${S(c.va_con)} · Descripción`, "", S(c.descripcion));
         meta += pb(`${S(c.va_con)} · Texto principal`, "", S(c.texto_principal));
+      });
+    }
+    if(A(mt.imagenes).length){
+      meta += `<h3>Anuncios de imagen</h3><div class="card">Pon <b>1 anuncio de imagen en cada conjunto</b>, junto al video (mismo conjunto, mismo botón de WhatsApp). Así Meta tiene más opciones para encontrar compradores: a mucha gente le vende la foto y a otra el video. Genera la imagen en Flow con P0 adjunta y pon el texto encima en Canva o CapCut, dentro de la zona segura (centro, lejos de los bordes).</div>`;
+      A(mt.imagenes).forEach((m,k)=>{
+        const id = S(m.id, "IMG"+(k+1));
+        meta += `<div class="card"><b>${esc(id)} · ${esc(S(m.nombre))}</b><br>${esc(S(m.concepto))}<br><b>Texto encima:</b> ${esc(S(m.texto_encima))}${m.texto_secundario ? ` · <small>${esc(S(m.texto_secundario))}</small>` : ""}</div>`;
+        meta += pb(`${id} · imagen (Flow)`, att("Adjuntar","P0"), rmPromptImg(m, r));
+        meta += pb(`${id} · Título`, "", S(m.titulo));
+        meta += pb(`${id} · Descripción`, "", S(m.descripcion));
+        meta += pb(`${id} · Texto principal`, "", S(m.texto_principal));
       });
     }
     if(A(mt.titulos_extra).length) meta += pb("Más títulos enganchables (uno por línea)", "", A(mt.titulos_extra).map(S).join("\n"));
