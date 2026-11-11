@@ -497,6 +497,11 @@ body.locked .app{visibility:hidden}
               <label for="rmPais">País<select id="rmPais" name="pais"></select></label>
             </div>
             <label for="rmTemp">Temporada u ocasión (opcional)<input id="rmTemp" name="temporada" value="Navidad y regalos de fin de año"></label>
+            <label for="rmModo">Tipo de producto (cómo armo los prompts)<select id="rmModo" name="modo">
+              <option value="auto" selected>Automático: si es natural, de salud o medicinal uso el modo seguro</option>
+              <option value="normal">Normal: 3 variaciones por nivel de conciencia</option>
+              <option value="seguro">Natural o medicinal: modo seguro para Meta (mismo diálogo, 3 escenas en 3D)</option>
+            </select></label>
             <label for="rmCierre">Cómo cierras la venta (para armar la campaña de Meta)<select id="rmCierre" name="cierre">
               <option value="whatsapp" selected>Por WhatsApp: el cliente nos escribe y concretamos ahí</option>
               <option value="web">Formulario en la página (landing con pago contraentrega)</option>
@@ -1680,6 +1685,124 @@ Reglas:
 - 4 textos en pantalla con sus segundos, en MAYÚSCULAS, cortos (máx 5 palabras) y con su posición: formato "0-3 s: \"TEXTO\" · centro". El texto de 0-3 s refuerza el gancho visual (nunca oferta). Todos van dentro de la zona segura de Reels y Stories: centro de la pantalla, lejos de los bordes; nunca en el 14 % de arriba, el 35 % de abajo ni pegados a los lados. La oferta (pago al recibir, envío, combo, "Promo de temporada") va solo en el último texto.`;
 }
 
+/* ================= Modo seguro (productos naturales, de salud o medicinales) =================
+   Mismo diálogo en versión segura para Meta/TikTok, 3 escenas en 3D estilizado, prompts F/C encadenados
+   y auditoría de palabras que Flow y Meta rechazan. Formato tomado de la hoja "TinniDrop". */
+const RM_SENSIBLE = /(suplement|natural|gotas|c[aá]psul|col[aá]geno|vitamina|magnesio|drenaje|linf[aá]tic|tinnitus|zumbido|o[ií]do|audici|dolor|artritis|articula|rodilla|pr[oó]stat|diabet|glucosa|az[uú]car en la sangre|presi[oó]n arterial|h[ií]gado|colesterol|adelgaz|bajar de peso|quema ?grasa|quemador|detox|desintox|parche|crema|ung[uü]ento|hongo|v[aá]rices|insomnio|dormir mejor|ansiedad|estr[eé]s|cabello|calvicie|ca[ií]da del cabello|canas|piel|acn[eé]|manchas|melasma|arrugas|hemorroid|digesti|colon|estre[ñn]imiento|probi[oó]tic|shilajit|batana|t[eé] |infusi[oó]n|medicinal|terap[eé]utic|salud|alivi|inflamaci|nervio|ci[aá]tica|cervical|visi[oó]n|ojos|energ[ií]a|vitalidad|libido|hormonal|menopausia|circulaci|respira|tos |gripa|inmun|antioxidante|guan[aá]bana|or[eé]gano|c[uú]rcuma|jengibre|moringa|ginseng|nad\+|resveratrol|berberina|ashwagandha)/i;
+function rmIsSensible(i){ return RM_SENSIBLE.test(S(i.nombre) + " " + S(i.hace)); }
+const SEG_STYLE = "Stylized 3D animated feature film look, soft rounded shapes, expressive eyes, smooth shading, cinematic lighting";
+const SEG_EXCL_PER = "no text, no logos, no watermarks, no extra limbs, no distorted faces, no flowers in hair, no floral clothing, no colonial village houses";
+const SEG_EXCL_IN = "no text, no logos, no watermarks, no people";
+const SEG_EXCL_PROD = "no other logos, no watermarks, no extra limbs, no distorted faces";
+const SEG_EXTRA = "Create a seamless stylized 3D animated transition between the first shot and the second shot, smooth eased motion, nothing moves linearly";
+// Palabras que el filtro de Flow bloquea aunque vayan en negativo (rojo) o que pueden leerse mal (amarillo)
+const LINT_FLOW_RED = /\b(blood|bloody|bleed\w*|teeth|tooth|muscles?|anatom\w*|organs?|surgery|surgical|scalpel|needles?|syringe|inject\w*|wounds?|naked|nude|in bed|sexy|seductive|kiss\w*|kill\w*|dead|death|corpse|guns?|weapons?|child|children|kids?|girls?|boys?|baby|babies|teen\w*|minors?|doctor|nurse|lab coat|scrubs|hospital|patients?|pills?|medicine bottle|drugs?|skeleton|skull|bones?|veins?|arter\w*|nerves?|brain tissue|x-ray)\b/i;
+const LINT_FLOW_YEL = /\b(tight\w*|stops?|scream\w*|shoot\w*|hits?|blow\w*|fight\w*|explod\w*|burn\w*|yell\w*)\b/i;
+// Frases del guion o de los textos que Meta/TikTok suelen rechazar en productos de salud
+const LINT_META_RED = /(\bcura\b|\bcurar\b|\bcuraci[oó]n|\bcura (el|la|los|las)\b|\bsana\b|\bsanar\b|elimina(r)? (el|la|los|las|por completo)|desaparece(r)?\b|para siempre|de una vez por todas|garantiza|100 ?%|milagro|m[eé]dico|doctor|pacientes|receta m[eé]dica|tratamiento|enfermedad|antes de que sea tarde|irreversible|astronauta|soldados|t[eé]cnica secreta|aprobado por|\bFDA\b|INVIMA|sin efectos secundarios|reemplaza (tu|el) medicamento|deja (tu|tus) (pastillas|medicamentos))/i;
+const LINT_META_YEL = /(¿(tienes|sufres|padeces|te duele|est[aá]s)\b|\b(tu|tus|te)\b[^.]{0,40}\b(dolor|zumbido|enfermedad|cerebro|mente|peso|grasa|piel|o[ií]do|presi[oó]n|az[uú]car|h[ií]gado|articulaciones|pr[oó]stata)\b|\bmata\b|\bt[oó]xic)/i;
+function rmLint(text, kind){
+  const t = S(text);
+  if(kind==="meta"){ const r = t.match(LINT_META_RED); if(r) return {nivel:"rojo", w:r[0]}; const y = t.match(LINT_META_YEL); if(y) return {nivel:"amarillo", w:y[0]}; return {nivel:"ok"}; }
+  const r = t.match(LINT_FLOW_RED); if(r) return {nivel:"rojo", w:r[0]};
+  const y = t.match(LINT_FLOW_YEL); if(y && !/\byellow\b/i.test(y[0])) return {nivel:"amarillo", w:y[0]};
+  return {nivel:"ok"};
+}
+
+function rmMainPromptSeguro(i){
+  return `Eres estratega de dropshipping con pago contraentrega en ${i.pais} y director creativo de anuncios en video hechos con IA (Google Flow para imágenes y clips, voz en Fish Audio o ElevenLabs, montaje en CapCut). Este producto es NATURAL, DE SALUD O MEDICINAL: Meta, TikTok y el filtro de Flow lo vigilan. Tu trabajo es que el anuncio venda sin que lo baneen.
+
+PRODUCTO: ${i.nombre}
+LA VERDAD DEL PRODUCTO (qué hace y qué no): ${i.hace}
+PRECIO PROVEEDOR: ${i.costo} COP. PRECIO DE VENTA: ${i.precio ? i.precio + " COP" : "no definido: sugiérelo"}. FLETE: ${i.flete}. DEVOLUCIONES: ${i.devol}%.
+PAÍS: ${i.pais}. TEMPORADA: ${i.temporada || "ninguna"}.
+ANUNCIO GANADOR (transcripción o descripción): ${i.ganador || "no lo tengo: escribe tú el diálogo típico que usan los anuncios ganadores de este nicho"}
+COMPETIDORES: ${i.competidores || "búscalos"}
+${i.foto ? "Te adjunto la foto real del producto: descríbelo EXACTAMENTE como se ve (caja, frasco, etiqueta)." : ""}
+${i.web ? "Usa buscar_web y leer_pagina (máximo 5 búsquedas y 4 lecturas): Mercado Libre y tiendas de " + i.pais + ", Meta Ad Library y TikTok. No inventes precios." : "No tienes internet: marca las cifras como estimadas."}
+
+FORMATO (igual al de la hoja "TinniDrop"): UN SOLO DIÁLOGO para las 3 variaciones; lo que cambia entre variaciones es la ESCENA, no el guion, para que el test mida la escena.
+1. "dialogo": parte el diálogo en 10 a 17 frases con su tiempo ("0:00-0:03"...), entre 45 y 100 segundos en total (si hay transcripción del ganador, respeta su largo y sus frases). Para cada frase da "original" (el texto del ganador o el típico del nicho, agresivo) y "seguro" (la versión que no rechazan Meta/TikTok, con la misma idea y casi el mismo largo). Si la frase original ya es segura, pon "igual" en "seguro".
+2. Reglas de la versión segura:
+   - Nada de promesas de cura ni de resultados absolutos: prohibido "cura", "elimina", "desaparece", "para siempre", "de una vez por todas", "100 %", "garantizado", "milagro". Usa "ayuda a", "apoya", "contribuye a", "rutina de cuidado", "bajarle el volumen".
+   - Nada de atributos personales de salud en segunda persona ("tu zumbido", "si sufres de…", "¿tienes…?"): habla en tercera persona ("quien lo vive", "muchas personas", "cuando ese pitido persigue a alguien").
+   - Nada de miedo extremo ("tu mente colapsando", "antes de que sea tarde", "daño irreversible").
+   - Nada de simular profesionales de salud ("recomiendo a mis pacientes", médicos, batas) ni autoridades sin respaldo ("astronautas", "soldados de élite", "técnica secreta", "aprobado por…").
+   - Nada de reemplazar medicamentos ni decir "sin efectos secundarios". Si nombras ingredientes, solo los que trae la etiqueta real; si no los sabes, escribe "[nombrar aquí los ingredientes reales de la etiqueta]".
+   - La última frase segura cierra con oferta y "pagas al recibir".
+3. "riesgos": las frases del original con más riesgo de rechazo y el motivo (simula profesional de salud, afirmación sin respaldo, miedo y atributo personal en segunda persona, promesa de cura, ingredientes que no cuadran con el producto…).
+4. "variaciones": 3 escenas para el mismo diálogo. Cada una con un avatar distinto del público objetivo (edad real del comprador, en ${i.pais}), lugar, momento del día, paleta de color y una METÁFORA visual de lo que pasa por dentro del cuerpo hecha con objetos estilizados (cuarto de control con botón de emergencia, panel de fusibles, radio con estática, manguera de jardín, tubería…). NUNCA anatomía realista. "separa" resume en 4 rasgos lo que la diferencia de las otras (momento · paleta · interior/exterior · sola/acompañada).
+
+Responde SOLO con un objeto JSON con esta forma exacta (español, salvo los campos _en en inglés):
+{
+ "titulo": "Nombre · mismo diálogo, tres escenas",
+ "subtitulo": "Avatar de 45 a 55 años · Colombia · narrado en 3D estilizado · 9:16",
+ "alertas": [{"titulo":"","texto":""}],
+ "ganador": {"existe": true, "fuente": "", "tabla": [{"t":"0-3","dice":"","ve":""}], "por_que": "", "le_falta": ""},
+ "mercado": {"resumen":"","competidores":[{"nombre":"","precio":"","oferta":"","angulo":"","url":""}],"precio_mercado":"","precio_sugerido":0,"razon_precio":"","cpa_estimado":0,"puntajes":[{"criterio":"Demanda","pct":0,"nota":""},{"criterio":"Efecto wow en video","pct":0,"nota":""},{"criterio":"Margen","pct":0,"nota":""},{"criterio":"Competencia (alto = poco saturado)","pct":0,"nota":""},{"criterio":"Logística y devoluciones","pct":0,"nota":""},{"criterio":"Temporada / urgencia","pct":0,"nota":""}],"potencial_pct":0,"saturacion_pct":0,"saturacion_nota":"","veredicto":"","plan_test":[""],"fuentes":[""]},
+ "producto": {"nombre_corto_en":"the product","partes_en":"the product box and the white spray bottle","subject_en":"","detalle_en":"","lock_en":"the product must be exactly identical to the attached reference image: same shape, proportions, colors, materials, textures, details, label and accessories; do not redesign, simplify, recolor, add or remove any part of it","label_en":"keep the exact brand name and typography printed on the box and bottle","motion_lock_en":"the product stays exactly identical to the attached reference image in every frame; it only …; it never glows, floats on its own, opens or changes shape","regla":""},
+ "estilo_en": "${SEG_STYLE}",
+ "sonido": {"musica":"","efectos":"","voz":"voz de mujer u hombre colombiano de la edad del público, ritmo pausado","ambient_en":""},
+ "dialogo": [{"t":"0:00-0:03","original":"","seguro":"igual"}],
+ "riesgos": [{"frase":"","motivo":""}],
+ "ingredientes_nota": "qué confirmar en la etiqueta real antes de nombrar ingredientes",
+ "variaciones": [{"id":"V1","nombre":"La noche que no calla","corto":"Noche en casa","persona":"Mujer 51 años","lugar":"Habitación de noche","descripcion":"","metafora":"","separa":"Noche · azul índigo y ámbar · interior cerrado · sola"}],
+ "ganchos": [{"ve":"","dice":"","nivel":"","va_con":"V1"}]
+}
+Exactamente 3 variaciones, 6 puntajes y 5 ganchos (con lenguaje seguro). Precios en COP enteros. Todo para ${i.pais} y pago contraentrega.`;
+}
+
+function rmVarPromptSeguro(i, r, v){
+  const p = r.producto || {}, D = A(r.dialogo);
+  const lines = D.map((d,k)=>`${k+1}. [${S(d.t)}] ${S(d.seguro)==="igual" || !S(d.seguro) ? S(d.original) : S(d.seguro)}`).join("\n");
+  return `Eres director de arte de anuncios en 3D estilizado hechos con Google Flow (imágenes de inicio y fin, clips sin sonido). Producto natural/de salud: el filtro de Flow y Meta lo vigilan.
+PRODUCTO: ${i.nombre}. Verdad: ${i.hace}. Se ve como: ${S(p.subject_en)}. Partes: ${S(p.partes_en,"the product")}.
+ESTILO (igual en toda la variación): ${S(r.estilo_en, SEG_STYLE)}
+
+VARIACIÓN ${S(v.id)} · ${S(v.nombre)} · ${S(v.persona)} · ${S(v.lugar)}
+${S(v.descripcion)}
+Metáfora de lo que pasa por dentro: ${S(v.metafora)}
+Lo que la separa de las otras: ${S(v.separa)}
+
+EL DIÁLOGO (versión segura, una frase por imagen):
+${lines}
+
+Diseña la escaleta: una imagen F por frase (F1 a F${D.length}) más F${D.length + 1}, el cierre con el producto. Y un clip por frase: C1 va de F1 a F2, C2 de F2 a F3… hasta C${D.length} (de F${D.length} a F${D.length + 1}).
+Responde SOLO con un objeto JSON:
+{
+ "ancla": {"desc_en":"a 51 year old Colombian woman with a clearly mature adult face, warm tan skin, … hair, … eyes, …, wearing … (plain clothes)", "ambiente_en":"where she is: modern place in ${i.pais}, time of day, palette"},
+ "interior_en": "the stylized place for the metaphor views (e.g. a stylized control room inside the mind made of soft glowing panels, switches and cables, indigo and amber palette)",
+ "tomas": [{"id":"F1","persona":true,"producto":false,"interior":false,"action_en":"what is seen, in English, positive words only","camera_en":"medium close up"}],
+ "clips": [{"id":"C1","action_en":"what moves in 6 to 8 s, in English","camera_en":"quick push in with a slight overshoot","personaje":true,"producto":false,"lento":false}],
+ "nota_clips": "qué clips van a velocidad 0.7 porque la frase dura más"
+}
+Reglas (las mismas que pasaron la auditoría de la hoja TinniDrop):
+- Exactamente ${D.length + 1} tomas y ${D.length} clips, en orden.
+- persona=true cuando sale el avatar; producto=true cuando sale el producto (desde la frase del producto hasta el cierre); interior=true en las vistas de la metáfora (sin personas).
+- Las vistas por dentro del cuerpo son SIEMPRE la metáfora estilizada (cables, tubos, luces, paneles, gotas de luz), descritas solo en positivo. Nunca escribas en ningún campo: blood, teeth, muscles, anatomy, organs, nerves, veins, bones, skull, surgery, needle, pills, doctor, nurse, hospital, patient, medicine bottle (usa "plain unlabeled medicine container"), naked, in bed (usa "lies on her pillow under a blanket"), child/children/kids/baby/girl/boy (los hijos siempre "adult son and daughter in their late 20s"), tight (usa "tense"), stop (usa "calm down").
+- Nadie lleva bata ni uniforme médico. Ropa lisa, sin flores; casas y apartamentos modernos, sin casas coloniales.
+- El producto solo hace lo que de verdad hace (por ejemplo, el atomizador suelta una bruma fina al presionar). Nunca brilla, flota ni cambia de forma.
+- Clips con movimiento suave y con intención (push in, orbit, tracking con parallax, time lapse). En los clips con avatar el sistema agrega "all characters keep their mouths closed the whole time": no lo repitas.
+- Escenas, comidas y lugares típicos de ${i.pais}. Nunca texto dentro de las imágenes.`;
+}
+
+function rmAuditPromptSeguro(i, r){
+  const blocks = [];
+  A(r.variaciones).forEach(v=>{ const d = v.__det || {}; A(d.tomas).forEach(t=>blocks.push(`${S(v.id)} ${S(t.id)}: ${S(t.action_en)}`)); A(d.clips).forEach(c=>blocks.push(`${S(v.id)} ${S(c.id)}: ${S(c.action_en)}`)); });
+  return `Eres el auditor de una hoja de ruta de anuncios para un producto natural/de salud (${i.nombre}). Revisa como lo haría un moderador de Meta/TikTok y el filtro de Google Flow.
+DIÁLOGO SEGURO: ${A(r.dialogo).map(d=>S(d.seguro)==="igual"?S(d.original):S(d.seguro)).join(" ")}
+AVATARES: ${A(r.variaciones).map(v=>`${S(v.id)} ${S(v.persona)} en ${S(v.lugar)}: ${S(v.__det?.ancla?.desc_en)}`).join(" | ")}
+BLOQUES DE FLOW:
+${blocks.join("\n")}
+Responde SOLO con JSON:
+{"hallazgos":[{"donde":"V1 F13","pase":"5 · Cuerpo","hallazgo":"qué palabra o idea puede disparar el filtro","nivel":"Rojo o Amarillo","cambio":"cómo quedó o cómo debe quedar"}],
+ "amarillos":["amarillos que se dejan y por qué (falsos positivos)"],
+ "moderador":["lectura de moderador: qué cuidaste (sin batas, hijos adultos, sin flores ni casas coloniales, sin logos, clips sin sonido…)"],
+ "guion":"riesgos del guion original para Meta/TikTok y por qué la versión segura los evita",
+ "referencias":["qué revisar en las fotos antes de adjuntarlas (P0 solo producto, sin manos, sin marcas de agua…)"]}
+Pases de referencia: 1 · Texto, 2 · Marcas, 3 · Sugerente, 4 · Violencia, 5 · Cuerpo, 6 · Menores, 7 · Personas reales, 8 · Audio, 9 · Producto.`;
+}
+
 function rmMetaPrompt(i, r){
   const nums = rmNumbers(r), vs = A(r.variaciones);
   const wa = S(i.cierre,"whatsapp") !== "web";
@@ -1694,7 +1817,7 @@ Saturación: ${S(r.mercado?.saturacion_pct,"?")}%. Veredicto: ${S(r.mercado?.ver
 Temporada: ${i.temporada || "ninguna"}.
 Variaciones de video: ${vs.map(v=>`${S(v.id)} "${S(v.nombre)}" (${S(v.nivel)}): ${S(v.concepto)} Gancho: ${S(v.gancho)}`).join(" || ")}
 
-TAREA: dime exactamente cómo pautarlo en el Administrador de anuncios de Meta, pantalla por pantalla y campo por campo, con los nombres exactos que aparecen en Meta en español (Campaña → Presupuesto → Conjunto de anuncios → Anuncio). Di qué opción seleccionar en cada lista y por qué. Escribe títulos y descripciones enganchables para cada video. Sé concreto con cifras en COP.
+${r.modo==="seguro" ? `PRODUCTO NATURAL O DE SALUD: todos los textos (copies, títulos, descripciones, bienvenida, preguntas, imágenes) deben cumplir las políticas de Meta: nada de promesas de cura ni resultados absolutos (cura, elimina, desaparece, para siempre, 100 %, garantizado), nada de atributos personales en segunda persona ("¿sufres de…?", "tu dolor"), nada de antes y después del cuerpo, nada de simular médicos ni autoridades, nada de "reemplaza tu medicamento". Usa "ayuda a", "apoya", "rutina de cuidado". En el conjunto, la categoría especial NO aplica. Los anuncios de imagen muestran el producto en una escena de uso, nunca el cuerpo ni la condición.\n` : ""}TAREA: dime exactamente cómo pautarlo en el Administrador de anuncios de Meta, pantalla por pantalla y campo por campo, con los nombres exactos que aparecen en Meta en español (Campaña → Presupuesto → Conjunto de anuncios → Anuncio). Di qué opción seleccionar en cada lista y por qué. Escribe títulos y descripciones enganchables para cada video. Sé concreto con cifras en COP.
 
 Responde SOLO con un objeto JSON con esta forma exacta (todo en español):
 {
@@ -1809,8 +1932,37 @@ const RM_CSS = `.rm{--wine:#4A0D18;--cream:#FBF3E4;--sand:#F3E6CC;--brass:#C8902
 .rm .bar i{display:block;height:100%;background:var(--pine)}
 .rm .bar i.mid{background:var(--brass)} .rm .bar i.low{background:var(--berry)}`;
 
+const TD_CSS = `.rm.td{--bg:#f6f4ef;--fg:#1d1d1b;--mut:#6b6a66;--card:#fff;--acc:#1f5f8b;--line:#e3e0d8;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;color-scheme:light dark}
+@media (prefers-color-scheme:dark){.rm.td{--bg:#151514;--fg:#ecebe7;--mut:#a3a19b;--card:#1f1f1d;--acc:#7bb6e0;--line:#33322f}}
+.rm.td header{background:var(--bg);color:var(--fg);padding:20px 20px 0;max-width:1000px;margin:auto}
+.rm.td header h1{font:700 22px/1.3 system-ui,-apple-system,Segoe UI,sans-serif;margin:0 0 4px;color:var(--fg)}
+.rm.td header p{color:var(--mut);margin:0 0 12px;font-size:15px}
+.rm.td nav.tabs{position:sticky;top:0;background:var(--bg);border-bottom:1px solid var(--line);padding:8px 0;display:flex;gap:6px;flex-wrap:wrap;z-index:5}
+.rm.td nav.tabs button{border:1px solid var(--line);background:var(--card);color:var(--fg);padding:6px 12px;border-radius:999px;font:500 14px system-ui,sans-serif}
+.rm.td nav.tabs button.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+.rm.td main{max-width:1000px;margin:auto;padding:10px 20px 60px}
+.rm.td h2{font:700 19px/1.3 system-ui,sans-serif;margin:18px 0 6px;color:var(--fg)}
+.rm.td h3{font:700 16px/1.3 system-ui,sans-serif;margin:26px 0 8px;color:var(--fg);scroll-margin-top:60px}
+.rm.td .lead{margin:0 0 4px} .rm.td .tag,.rm.td .note{color:var(--mut);font-size:13.5px}
+.rm.td table{font-size:13.5px;background:var(--card);border-radius:0;border-collapse:collapse}
+.rm.td th,.rm.td td{border:1px solid var(--line);padding:6px 8px} .rm.td th{background:var(--line);text-transform:none;letter-spacing:0;font-size:13.5px}
+.rm.td .same{color:var(--mut)}
+.rm.td .warn{background:#fff4d6;color:#4a3b00;border:0;border-radius:8px;padding:10px 12px;margin:14px 0;font-size:14px}
+@media (prefers-color-scheme:dark){.rm.td .warn{background:#3a3011;color:#f3e3a8}}
+.rm.td .card,.rm.td .kpi{background:var(--card);border-color:var(--line);border-radius:10px;color:var(--fg)}
+.rm.td .kpi b,.rm.td .big{color:var(--acc)} .rm.td .kpi span{color:var(--mut)}
+.rm.td .chips a{display:inline-block;margin:4px 6px 0 0;padding:3px 10px;border:1px solid var(--line);border-radius:999px;color:var(--acc);text-decoration:none;font-size:13px;cursor:pointer;word-break:normal}
+.rm.td .pb{background:var(--card);border-color:var(--line);border-radius:10px}
+.rm.td .pb .ph{background:transparent;justify-content:flex-start;gap:8px}
+.rm.td .pb .ph b{flex:1;font-weight:600}
+.rm.td .pb .att{color:var(--mut)} .rm.td .pb .att span{color:var(--fg);font-weight:600}
+.rm.td .pb pre{border-top:1px solid var(--line);color:var(--fg)}
+.rm.td button.cp{background:var(--acc);border-radius:6px;padding:5px 12px;font:600 13px system-ui,sans-serif}
+.rm.td .okb{font-size:12px;color:#2e7d32} .rm.td .midb{font-size:12px;color:#a86b00} .rm.td .badb{font-size:12px;color:#c62828;font-weight:700}
+.rm.td a{color:var(--acc)} .rm.td code{background:var(--line)} .rm.td .bar{background:var(--line)} .rm.td .bar i{background:var(--acc)}`;
 const RM_SCRIPT = `(function(){var root=document;function show(k){root.querySelectorAll('section.tab').forEach(function(s){s.classList.toggle('on',s.id===k)});root.querySelectorAll('nav.tabs button').forEach(function(b){b.classList.toggle('on',b.dataset.k===k)});try{history.replaceState(null,'','#'+k)}catch(e){};window.scrollTo(0,0)}
 root.querySelectorAll('nav.tabs button').forEach(function(b){b.onclick=function(){show(b.dataset.k)}});
+root.querySelectorAll('[data-goto]').forEach(function(a){a.onclick=function(){var el=document.getElementById(a.dataset.goto);if(el)el.scrollIntoView({behavior:'smooth',block:'start'})}});
 root.querySelectorAll('button.cp').forEach(function(b){b.onclick=function(){var pre=document.getElementById(b.dataset.t);var t=pre.innerText;var done=function(){b.textContent='Copiado';b.classList.add('ok');setTimeout(function(){b.textContent='Copiar';b.classList.remove('ok')},1600)};var sel=function(){var r=document.createRange();r.selectNodeContents(pre);var s=getSelection();s.removeAllRanges();s.addRange(r);b.textContent='Ctrl+C'};try{navigator.clipboard.writeText(t).then(done,sel)}catch(e){sel()}}});
 var h=location.hash.slice(1);if(h&&document.getElementById(h)&&document.getElementById(h).classList.contains('tab'))show(h);})();`;
 
@@ -1947,6 +2099,106 @@ function rmBody(r){
     if(A(mt.errores).length) meta += `<h3>Errores que te quitan ventas</h3><ol class="steps">${A(mt.errores).map(x=>`<li>${esc(S(x))}</li>`).join("")}</ol>`;
   }
 
+  if(r.modo==="seguro"){
+    const P = r.producto || {}, D = A(r.dialogo), STY = S(r.estilo_en, SEG_STYLE), V = A(r.variaciones);
+    const seg = d => (S(d.seguro)==="igual" || !S(d.seguro)) ? S(d.original) : S(d.seguro);
+    let nF = 0, nRojo = 0, nAma = 0; const fallas = [];
+    const badge = (txt, kind, donde) => { nF++; const L = rmLint(txt, kind); if(L.nivel==="rojo"){ nRojo++; fallas.push([donde, kind==="meta" ? "Guion (Meta)" : "Flow", L.w, "Rojo"]); } if(L.nivel==="amarillo"){ nAma++; fallas.push([donde, kind==="meta" ? "Guion (Meta)" : "Flow", L.w, "Amarillo"]); }
+      return L.nivel==="ok" ? `<span class="okb">✓ Auditado</span>` : `<span class="${L.nivel==="rojo"?"badb":"midb"}">⚠ Revisar: “${esc(L.w)}”</span>`; };
+    const pbA = (title, adj, text, kind, donde) => { n++; return `<div class="pb"><div class="ph"><b>${esc(title)}</b>${badge(text, kind||"flow", donde||title)}<button class="cp" data-t="t${n}">Copiar</button></div>${adj ? `<div class="att">${adj}</div>` : ""}<pre id="t${n}">${esc(text)}</pre></div>`; };
+    const prodLines = `[PRODUCT]: ${S(P.lock_en)}\n[LABEL]: ${S(P.label_en, "keep the exact brand name and typography printed on the product")}`;
+    const promptP0 = `[STYLE LOCK]: clean product reference sheet, realistic product photography
+[ACTION]: ${S(P.partes_en, "the product")} shown in seven angles: front, back, left side, right side, three quarter left, three quarter right, top
+[ENVIRONMENT]: plain light grey seamless background
+[LIGHTING]: soft even studio light, no harsh reflections
+[CAMERA]: product sheet layout, all angles at the same scale
+[ASPECT]: 16:9 horizontal
+[REFERENCE]: the real product photo
+${prodLines}
+[EXCLUDE]: no other logos, no watermarks, no hands, no people`;
+
+    // --- Diálogo y ruta
+    let intro = `<h2>Hoja de ruta</h2><ol class="steps">
+<li><b>Voz:</b> usa tu voz en off original o genera una nueva en ElevenLabs o Fish Audio con el texto de abajo (recomendado: la versión segura). ${esc(S(r.sonido?.voz, "Voz colombiana de la edad del público, ritmo pausado."))}</li>
+<li><b>P0</b> (hoja de producto) una sola vez para las tres variaciones.</li>
+<li>En cada variación: <b>A1</b> → aprobar → <b>F1</b> → aprobar → <b>F2…F${D.length + 1}</b> → probar <b>C1</b> antes de generar el resto.</li>
+<li>Clips en Flow con <b>video sin sonido</b>, F1→F2, F2→F3… Cada clip cubre una frase.</li>
+<li><b>CapCut:</b> voz encima, recorta cada clip al tiempo de su frase (tabla de escaleta), subtítulos palabra por palabra y corte del ambiente cuando entra el producto. Los primeros 3 s muestran el gancho visual y los textos van en la zona segura (centro).</li>
+<li><b>Flow · imagen:</b> los 2 anuncios de imagen están en la pestaña 📣 Cómo pautar en Meta.</li></ol>
+<p class="note">País: <b>${esc(S(r.__input?.pais,"Colombia"))}</b>. ${esc(S(r.subtitulo))}. Estilo 3D estilizado igual en las tres variaciones, para que el test mida la escena y no el estilo. Las vistas por dentro del cuerpo van estilizadas (cables, tubos, luces) para que Flow no las bloquee.</p>`;
+    if(A(r.alertas).length) intro += `<div class="warn"><b>Antes de pautar:</b><br>${A(r.alertas).map((a,k)=>`${k+1}. <b>${esc(S(a.titulo))}:</b> ${esc(S(a.texto))}`).join("<br>")}</div>`;
+    intro += `<h3>El diálogo</h3><div class="tw"><table><thead><tr><th>Tiempo</th><th>Diálogo original</th><th>Versión segura (mismo largo aprox.)</th></tr></thead><tbody>${D.map(d=>`<tr><td style="white-space:nowrap">${esc(S(d.t))}</td><td>${esc(S(d.original))}</td><td>${S(d.seguro)==="igual" || !S(d.seguro) ? `<span class="same">igual</span>` : esc(S(d.seguro))}</td></tr>`).join("")}</tbody></table></div>`;
+    if(A(r.riesgos).length || r.ingredientes_nota) intro += `<div class="warn"><b>Antes de pegar la voz:</b> las frases de la columna izquierda que más riesgo tienen de rechazo en Meta, TikTok y Flow son:<br>${A(r.riesgos).map(x=>`• “${esc(S(x.frase))}”: ${esc(S(x.motivo))}`).join("<br>")}${r.ingredientes_nota ? `<br><b>Ingredientes:</b> ${esc(S(r.ingredientes_nota))}` : ""}<br>Las escenas sirven igual para las dos versiones porque cada frase conserva su idea y su tiempo.</div>`;
+    intro += pbA("Guion corrido · versión segura (para ElevenLabs/Fish Audio)", "", D.map(seg).join(" "), "meta", "Guion seguro");
+    intro += pb("Guion corrido · original corregido", "", D.map(d=>S(d.original)).join(" "));
+    if(p.regla) intro += `<div class="card"><b>Regla del producto:</b> ${esc(S(p.regla))}</div>`;
+
+    // --- Variaciones
+    const vTabs = V.map((v,k)=>{
+      const d = v.__det, vid = "v" + (k+1);
+      let s = `<h2>${esc(S(v.id))} · ${esc(S(v.nombre))} · ${esc(S(v.persona))} · ${esc(S(v.lugar))}</h2><p class="lead">${esc(S(v.descripcion))}</p><p class="tag">Lo que la separa de las otras: ${esc(S(v.separa))}</p>`;
+      if(!d) return s + `<div class="warn">Esta variación no se pudo generar. Vuelve a generar la hoja de ruta.</div>`;
+      s += `<p class="chips"><a data-goto="${vid}-anclas">Anclas</a><a data-goto="${vid}-escaleta">Escaleta</a><a data-goto="${vid}-imagenes">Imágenes</a><a data-goto="${vid}-clips">Clips</a></p>`;
+      const anc = d.ancla || {}, T = A(d.tomas), Cl = A(d.clips), ENV = S(anc.ambiente_en), INT = S(d.interior_en);
+      const promptA1 = `[STYLE LOCK]: ${STY}
+[SUBJECT]: ${S(anc.desc_en)}
+[ACTION]: standing relaxed, looking at the camera with a calm neutral expression, mouth closed
+[ENVIRONMENT]: ${ENV}
+[LIGHTING]: soft even light that shows the face clearly
+[CAMERA]: medium shot, waist up, front view
+[ASPECT]: 9:16 vertical
+[EXCLUDE]: ${SEG_EXCL_PER}`;
+      s += `<h3 id="${vid}-anclas">Anclas de esta variación</h3><div class="warn">P0 es la misma en las tres variaciones. Si ya la generaste, no la regeneres.</div>`;
+      s += pbA("P0 · Hoja de producto", att("Adjuntar", "foto real del producto (solo el producto, sin manos ni marcas de agua)"), promptP0, "flow", `${S(v.id)} P0`);
+      s += pbA("A1 · Ancla del personaje", att("Adjuntar", "nada. Genera varias, elige una y apruébala antes de seguir"), promptA1, "flow", `${S(v.id)} A1`);
+      s += `<h3 id="${vid}-escaleta">Escaleta frase por imagen</h3><div class="tw"><table><thead><tr><th>Tiempo</th><th>Frase</th><th>Qué se ve</th><th>Imagen / clip</th></tr></thead><tbody>${T.map((t,j)=>`<tr><td style="white-space:nowrap">${esc(S(D[j]?.t, j>=D.length ? (S(D[D.length-1]?.t).split("-")[1] || "") + " (cierre)" : ""))}</td><td>${esc(j < D.length ? seg(D[j]) : "(cierre)")}</td><td>${esc(S(t.action_en))}</td><td style="white-space:nowrap">${esc(S(t.id,"F"+(j+1)))}${j < Cl.length ? " → " + esc(S(Cl[j]?.id,"C"+(j+1))) : ""}</td></tr>`).join("")}</tbody></table></div>`;
+      s += `<h3 id="${vid}-imagenes">Imágenes F1 a F${T.length}</h3>`;
+      T.forEach((t,j)=>{
+        const id = S(t.id, "F"+(j+1)), per = !!t.persona, pro = !!t.producto, inn = !!t.interior && !per && !pro;
+        const prev = j>0 ? S(T[j-1].id, "F"+j) : "";
+        const adj = [per ? "A1" : "", prev, pro ? "P0" : ""].filter(Boolean).join(", ") || "A1";
+        const ref = [per ? "character anchor A1 (keep face, hair and clothing identical)" : "", prev ? `previous image ${prev} (keep style and palette)` : "", pro ? "product sheet P0 (keep the product identical)" : ""].filter(Boolean).join("; ");
+        const env = inn ? INT : ENV;
+        const txt = `[STYLE LOCK]: ${STY}${per ? `\n[SUBJECT]: ${S(anc.desc_en)}` : ""}
+[ACTION]: ${S(t.action_en)}${env ? `\n[ENVIRONMENT]: ${env}` : ""}
+[LIGHTING]: soft cinematic light with a clear mood, gentle rim light
+[CAMERA]: ${S(t.camera_en, "medium shot")}
+[ASPECT]: 9:16 vertical
+[REFERENCE]: ${ref || "character anchor A1 (keep face, hair and clothing identical)"}${pro ? "\n" + prodLines : ""}
+[EXCLUDE]: ${pro ? SEG_EXCL_PROD : per ? SEG_EXCL_PER : SEG_EXCL_IN}`;
+        s += pbA(id, att("Adjuntar", adj), txt, "flow", `${S(v.id)} ${id}`);
+      });
+      s += `<h3 id="${vid}-clips">Clips C1 a C${Cl.length} · video sin sonido</h3><p class="note">Activa en Flow el <b>video sin sonido</b>: la voz va encima en el montaje. Recorta cada clip al tiempo de su frase, o ponle velocidad 0.7 si la frase dura más${d.nota_clips ? ` (${esc(S(d.nota_clips))})` : ""}.</p>`;
+      Cl.forEach((c,j)=>{
+        const id = S(c.id, "C"+(j+1)), f1 = S(T[j]?.id, "F"+(j+1)), f2 = S(T[j+1]?.id, "F"+(j+2));
+        const per = c.personaje!==undefined ? !!c.personaje : !!(T[j]?.persona || T[j+1]?.persona);
+        const pro = c.producto!==undefined ? !!c.producto : !!(T[j]?.producto || T[j+1]?.producto);
+        const txt = `[ACTION]: ${S(c.action_en)}${per ? ", all characters keep their mouths closed the whole time" : ""}
+[CAMERA]: ${S(c.camera_en, "slow push in")}
+[CONTINUITY]: ${per ? "keep the character's face, hair and clothing identical, " : ""}keep the same style, palette and lighting from the first frame to the last${pro ? `\n[PRODUCT]: ${S(P.motion_lock_en)}` : ""}
+[EXTRA]: ${SEG_EXTRA}`;
+        s += pbA(id, att("Start frame", f1) + ` · <span>End frame:</span> ${esc(f2)}${pro ? " · <span>Adjuntar:</span> P0" : ""}${c.lento ? " · <span>Velocidad:</span> 0.7" : ""}`, txt, "flow", `${S(v.id)} ${id}`);
+      });
+      return s;
+    });
+
+    // --- Auditoría
+    const au = r.auditoria || {};
+    let aud = `<h2>Auditoría de Flow y Meta</h2><div class="card"><b>${nF} bloques revisados</b> (P0, anclas, imágenes, clips y guion seguro). Revisión automática de palabras: <b>${nRojo}</b> en rojo y <b>${nAma}</b> en amarillo.${nRojo ? " Corrige los rojos antes de generar." : " Quedan 0 en rojo."}</div>`;
+    if(fallas.length) aud += `<h3>Revisión automática</h3>` + table(["Dónde","Filtro","Palabra","Nivel"], fallas);
+    if(A(au.hallazgos).length) aud += `<h3>Hallazgos y cambios</h3>` + table(["Dónde","Pase","Hallazgo","Nivel","Cambio"], A(au.hallazgos).map(h=>[h.donde, h.pase, h.hallazgo, h.nivel, h.cambio]));
+    if(A(au.amarillos).length) aud += `<h3>Amarillos que quedan, justificados</h3><ol class="steps">${A(au.amarillos).map(x=>`<li>${esc(S(x))}</li>`).join("")}</ol>`;
+    if(A(au.moderador).length) aud += `<h3>Lectura de moderador</h3><ol class="steps">${A(au.moderador).map(x=>`<li>${esc(S(x))}</li>`).join("")}</ol>`;
+    if(au.guion) aud += `<h3>Guion (Meta / TikTok)</h3><div class="card">${esc(S(au.guion))}</div>`;
+    if(A(au.referencias).length) aud += `<h3>Referencias a revisar antes de adjuntar</h3><ol class="steps">${A(au.referencias).map(x=>`<li>${esc(S(x))}</li>`).join("")}</ol>`;
+
+    const gan = A(r.ganchos).length ? `<h2>Banco de ganchos</h2><p>Cada uno reemplaza los primeros 3 segundos de una variación, con lenguaje seguro.</p>` + table(["#","Qué se ve","Qué se dice","Nivel","Va con"], A(r.ganchos).map((x,k)=>["G"+(k+1), x.ve, x.dice, x.nivel, x.va_con])) : "";
+    const tb = [["intro","Diálogo y ruta"], ...(r.meta ? [["meta","📣 Cómo pautar en Meta"]] : []), ["mercado","Mercado y números"], ...V.map((v,k)=>["v"+(k+1), `${S(v.id,"V"+(k+1))} · ${S(v.corto, v.nombre)}`]), ["audit","Auditoría"], ...(gan ? [["ganchos","Ganchos"]] : [])];
+    const sc = [["intro",intro], ...(r.meta ? [["meta",meta]] : []), ["mercado",merc], ...vTabs.map((x,k)=>["v"+(k+1), x]), ["audit",aud], ...(gan ? [["ganchos",gan]] : [])];
+    return `<div class="rm td"><header><h1>${esc(S(r.titulo, r.__input?.nombre || "Hoja de ruta"))}</h1><p>${esc(S(r.subtitulo))}</p>
+<nav class="tabs">${tb.map(([k,l],j)=>`<button data-k="${k}" class="${j===0?"on":""}">${esc(l)}</button>`).join("")}</nav></header>
+<main>${sc.map(([k,x],j)=>`<section class="tab${j===0?" on":""}" id="${k}">${x}</section>`).join("")}</main></div>`;
+  }
   if(r.__radar){
     const z = r.__radar, dk = z.dropkiller || {}, co = z.colombia || {}, an = z.angulo || {};
     let ori = `<h2>Gana en ${esc(S(z.pais_origen,"otro país"))}</h2><div class="kpis">
@@ -1980,13 +2232,14 @@ function rmBody(r){
 function rmDocument(r){
   const title = esc(S(r.titulo, "Hoja de ruta"));
   return `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>${title}</title>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,800&family=DM+Sans:wght@400;700;800&display=swap" rel="stylesheet"><style>html,body{margin:0;background:#FBF3E4}${RM_CSS}</style></head><body>${rmBody(r)}<script>${RM_SCRIPT}<\/script></body></html>`;
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,800&family=DM+Sans:wght@400;700;800&display=swap" rel="stylesheet"><style>html,body{margin:0;background:${r.modo==="seguro" ? "#f6f4ef" : "#FBF3E4"}}${RM_CSS}${r.modo==="seguro" ? TD_CSS : ""}</style></head><body>${rmBody(r)}<script>${RM_SCRIPT}<\/script></body></html>`;
 }
 
 function rmShow(r){
   rmCurrent = r;
   const host = $("#rmHost"); const root = host.shadowRoot || host.attachShadow({mode:"open"});
-  root.innerHTML = `<style>${RM_CSS}</style>${rmBody(r)}`;
+  root.innerHTML = `<style>${RM_CSS}${r.modo==="seguro" ? TD_CSS : ""}</style>${rmBody(r)}`;
+  root.querySelectorAll("[data-goto]").forEach(a=>a.addEventListener("click", ()=>{ const el = root.getElementById(a.dataset.goto); if(el) el.scrollIntoView({behavior:"smooth", block:"start"}); }));
   const showTab = k => { root.querySelectorAll("section.tab").forEach(s=>s.classList.toggle("on", s.id===k)); root.querySelectorAll("nav.tabs button").forEach(b=>b.classList.toggle("on", b.dataset.k===k)); reveal("rmView"); };
   root.querySelectorAll("nav.tabs button").forEach(b=>b.addEventListener("click", ()=>showTab(b.dataset.k)));
   root.querySelectorAll("button.cp").forEach(b=>b.addEventListener("click", async ()=>{
@@ -2050,11 +2303,13 @@ $("#rmForm").addEventListener("submit", async e=>{
   const i = {nombre:S(fd.get("nombre")).trim(), hace:S(fd.get("hace")).trim(), costo:+fd.get("costo")||0, precio:+fd.get("precio")||0,
     flete:+fd.get("flete")||0, devol:+fd.get("devol")||0, pais:S(fd.get("pais"),"Colombia"), temporada:S(fd.get("temporada")).trim(),
     ganador:S(fd.get("ganador")).trim(), competidores:S(fd.get("competidores")).trim(), foto: !!(file && imagesOk),
-    cierre: S(fd.get("cierre"),"whatsapp"),
+    cierre: S(fd.get("cierre"),"whatsapp"), modoSel: S(fd.get("modo"),"auto"),
     web: fd.get("__web")==="on" && webOk && toolsOk};
   const ctrl = rmCtrl = new AbortController();
   const tierUse = tier==="quick" ? "default" : tier;
   $("#rmGen").disabled = true; $("#rmGen").textContent = "Generando…"; $("#rmStop").hidden = false; rmLog.textContent = "";
+  i.modo = i.modoSel==="seguro" || (i.modoSel==="auto" && rmIsSensible(i)) ? "seguro" : "normal";
+  if(i.modo==="seguro") return rmGenerarSeguro(i, file);
   rmSteps([i.web ? "Investigando mercado y competencia en la web" : "Analizando mercado (sin web)", "Variación 1 · muy consciente", "Variación 2 · medianamente consciente", "Variación 3 · no consciente", "Configuración de Meta Ads y textos", "Armando la hoja de ruta"]);
   rmStep(0,"run");
   try{
@@ -2087,6 +2342,44 @@ $("#rmForm").addEventListener("submit", async e=>{
     if(rmCtrl===ctrl){ rmCtrl = null; $("#rmGen").disabled = false; $("#rmGen").textContent = "Generar hoja de ruta"; $("#rmStop").hidden = true; }
   }
 });
+async function rmGenerarSeguro(i, file){
+  const ctrl = rmCtrl = new AbortController();
+  const tierUse = tier==="quick" ? "default" : tier;
+  $("#rmGen").disabled = true; $("#rmGen").textContent = "Generando…"; $("#rmStop").hidden = false; rmLog.textContent = "";
+  rmSteps(["Modo seguro (producto natural o de salud): " + (i.web ? "investigando mercado y competencia" : "analizando mercado sin web") + " y escribiendo el diálogo seguro", "Variación 1 · escena", "Variación 2 · escena", "Variación 3 · escena", "Configuración de Meta Ads con lenguaje seguro", "Auditoría de Flow y Meta", "Armando la hoja de ruta"]);
+  rmStep(0,"run");
+  try{
+    const opts = {modelTier:tierUse, signal:ctrl.signal};
+    if(i.web) opts.tools = webTools(rmLogLine); else opts.cache = false;
+    if(IS_LOCAL) opts.__status = rmLogLine;
+    if(i.foto) opts.images = [file];
+    const r = await sample.json(rmMainPromptSeguro(i), opts);
+    if(!r || typeof r!=="object" || !A(r.dialogo).length) throw {code:"invalid_json"};
+    r.modo = "seguro"; r.__input = i; r.__precio = i.precio || +r.mercado?.precio_sugerido || 0;
+    rmStep(0,"ok"); rmLogLine(`Diálogo de ${A(r.dialogo).length} frases · potencial ${Math.round(+r.mercado?.potencial_pct||0)}%`);
+    const vs = A(r.variaciones).slice(0,3); r.variaciones = vs;
+    vs.forEach((_,k)=>rmStep(k+1,"run")); rmStep(4,"run");
+    const metaJob = sample.json(rmMetaPrompt(i, r), {modelTier:tierUse, signal:ctrl.signal, cache:false})
+      .then(d=>{ if(d && typeof d==="object" && (d.recomendacion || d.campana)){ r.meta = d; rmStep(4,"ok"); } else rmStep(4,"bad"); })
+      .catch(err=>{ if(err?.code==="cancelled") throw err; rmStep(4,"bad"); rmLogLine(`Meta Ads: ${aiErr(err)}`); });
+    await Promise.all([metaJob, ...vs.map((v,k)=>sample.json(rmVarPromptSeguro(i, r, v), {modelTier:tierUse, signal:ctrl.signal, cache:false})
+      .then(d=>{ if(d && typeof d==="object" && A(d.tomas).length){ v.__det = d; rmStep(k+1,"ok"); } else rmStep(k+1,"bad"); })
+      .catch(err=>{ if(err?.code==="cancelled") throw err; rmStep(k+1,"bad"); rmLogLine(`${S(v.id)}: ${aiErr(err)}`); }))]);
+    rmStep(5,"run");
+    try{ const au = await sample.json(rmAuditPromptSeguro(i, r), {modelTier:tierUse, signal:ctrl.signal, cache:false}); if(au && typeof au==="object") r.auditoria = au; rmStep(5,"ok"); }
+    catch(err){ if(err?.code==="cancelled") throw err; rmStep(5,"bad"); rmLogLine("Auditoría: " + aiErr(err) + " (queda la revisión automática de palabras)"); }
+    rmStep(6,"run");
+    const item = {id:uid(), nombre:i.nombre, at:Date.now(), r};
+    rmSave(item); rmStep(6,"ok");
+    rmShow(r);
+  }catch(err){
+    if(err?.code==="cancelled"){ rmLogLine("Detenido."); }
+    else { rmLogLine(err?.code==="invalid_json" ? "La respuesta no llegó completa. Prueba de nuevo o usa el modo Profundo." : aiErr(err)); }
+    rmStepsEl.querySelectorAll("li.run").forEach(li=>li.className="bad");
+  }finally{
+    if(rmCtrl===ctrl){ rmCtrl = null; $("#rmGen").disabled = false; $("#rmGen").textContent = "Generar hoja de ruta"; $("#rmStop").hidden = true; }
+  }
+}
 function rmCaps(){
   $("#rmFoto").disabled = !imagesOk;
   $("#rmFotoLbl").firstChild.textContent = imagesOk ? "Foto real del producto del proveedor (opcional, mejora los prompts)" : "Foto del producto (disponible al abrir el panel en Claude)";
