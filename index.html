@@ -257,6 +257,15 @@ body.locked .app{visibility:hidden}
 .home-card small{font-family:var(--f-mono);font-size:11.5px;color:var(--teal);margin-top:auto}
 .home-top{display:flex;flex-direction:column;gap:10px}
 .home-top h3{margin:0;font-family:var(--f-display);font-size:19px}
+.radar-alert{display:flex;align-items:center;gap:14px;background:linear-gradient(120deg,var(--amber-soft),transparent);border:1px solid var(--amber);border-radius:16px;padding:14px 16px;cursor:pointer;text-align:left;color:var(--fg);width:100%}
+.radar-alert b{font-family:var(--f-display);font-size:18px}
+.radar-alert span{font-size:13.5px;color:var(--muted)}
+.radar-alert .bell{font-size:26px;line-height:1}
+.radar-day{display:flex;flex-direction:column;gap:12px}
+.radar-day h3{margin:4px 0 0;font-family:var(--f-display);font-size:18px}
+.badge-new{display:inline-block;background:var(--amber);color:#1b1206;font-size:11px;font-weight:800;border-radius:999px;padding:2px 8px;margin-left:6px;vertical-align:middle}
+.chip-o{display:inline-flex;gap:6px;align-items:center;font-size:12px;color:var(--muted);border:1px solid var(--line-2);border-radius:999px;padding:3px 10px;width:max-content}
+.rail button{position:relative} .rail button .dot{position:absolute;top:6px;right:6px;width:9px;height:9px;border-radius:50%;background:var(--amber);box-shadow:0 0 0 2px var(--panel)}
 .prod-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px}
 .pcard{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:18px;display:flex;flex-direction:column;gap:12px;min-width:0}
 .pcard-h{display:flex;align-items:flex-start;gap:12px}
@@ -396,6 +405,15 @@ body.locked .app{visibility:hidden}
         <div class="home-kpis" id="homeKpis"></div>
         <div class="home-grid" id="homeGrid"></div>
         <div class="home-top" id="homeTop"></div>
+      </section>
+
+      <section class="home" id="radar" data-view="radar" aria-labelledby="radarTitle" hidden>
+        <div class="sec-h">
+          <div><div class="tag">Radar diario <em id="radarCount">0 productos</em></div><h2 id="radarTitle">Productos ganadores afuera, sin testear en Colombia</h2></div>
+          <p>Cada día Claude revisa Dropkiller en otros países y trae de 2 a 3 productos que venden bien afuera y casi nadie vende aquí, con el análisis completo: saturación, precio de venta, cómo lo venden, CPA y plan de testeo.</p>
+        </div>
+        <div id="radarAlertBox"></div>
+        <div id="radarList" class="radar-day"></div>
       </section>
 
       <section class="calc" id="calculadora" data-view="calculadora" aria-labelledby="calcTitle" hidden>
@@ -825,7 +843,7 @@ async function initDb(){
     store.set(LOCAL.tasks, data.tasks); store.set(LOCAL.chat, data.chat); store.set(LOCAL.saved, data.saved);
     setPill("pillSync","ok", IS_LOCAL ? "Datos: guardados en tu PC" : "Datos: guardados en la nube");
     renderTasks(); renderSaved(); if(!chatBusy) renderChat();
-    rmLoadCloud();
+    rmLoadCloud(); radarLoadCloud();
   }catch{
     clearTimeout(slow); setPill("pillSync","warn","Datos: solo en este navegador");
   }
@@ -1011,6 +1029,7 @@ const ICONS = {
   numeros:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
   chat:'<path d="M4 5h16v11H9l-5 4z"/>',
   tasks:'<path d="M9 6h11M9 12h11M9 18h11"/><path d="m3 6 1.5 1.5L7 5M3 12l1.5 1.5L7 11M3 18l1.5 1.5L7 17"/>',
+  radar:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><path d="M12 12 19 5"/><circle cx="12" cy="12" r="1.5"/>',
   globe:'<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>'
 };
 const svg = (k,s=20) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICONS[k]}</svg>`;
@@ -1239,8 +1258,77 @@ $("#stToChat").addEventListener("click", ()=>{
 /* ================= Apartados ================= */
 ICONS.home = '<path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/>';
 ICONS.trophy = '<path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8 20h8"/>';
+/* ================= Radar diario ================= */
+const SEED_RADAR = /*RADAR*/[]/*FIN_RADAR*/;
+data.radar = SEED_RADAR.slice();
+const radarHidden = () => store.get("ac.radar.hidden", []);
+const radarSeen = () => store.get("ac.radar.seen", []);
+function radarList(){ const h = radarHidden(); return data.radar.filter(x=>!h.includes(x.id)).sort((a,b)=>S(b.fecha).localeCompare(S(a.fecha)) || (+b.r?.mercado?.potencial_pct||0)-(+a.r?.mercado?.potencial_pct||0)); }
+function radarNew(){ const seen = radarSeen(); return radarList().filter(x=>!seen.includes(x.id)); }
+function radarMarkSeen(){ const all = radarList().map(x=>x.id); store.set("ac.radar.seen", [...new Set([...radarSeen(), ...all])].slice(-300)); radarDot(); }
+function radarDot(){ const b = document.querySelector('#rail [data-v="radar"]'); if(!b) return; const has = radarNew().length > 0; let d = b.querySelector(".dot"); if(has && !d) b.insertAdjacentHTML("beforeend", '<i class="dot"></i>'); if(!has && d) d.remove(); }
+function radarAlertHTML(){
+  const nw = radarNew(); if(!nw.length) return "";
+  return `<button type="button" class="radar-alert" data-radar-open><span class="bell">🔔</span><div><b>Hey ${esc(PNAME)}, mira estos nuevos productos</b><br><span>${nw.length} ${nw.length===1?"producto nuevo":"productos nuevos"} en el Radar diario: ${nw.slice(0,3).map(x=>esc(S(x.nombre))).join(" · ")}</span></div></button>`;
+}
+const fmtDia = d => { try{ const t = new Date(S(d)+"T12:00:00"); const hoy = new Date(); const ay = new Date(Date.now()-864e5); const k = x=>x.toISOString().slice(0,10); return k(t)===k(hoy) ? "Hoy" : k(t)===k(ay) ? "Ayer" : t.toLocaleDateString("es-CO",{weekday:"long", day:"numeric", month:"long"}); }catch{ return S(d); } };
+function radarCardHTML(x, isNew){
+  const r = x.r || {}, m = r.mercado || {}, z = r.__radar || {}, dk = z.dropkiller || {}, n = rmNumbers(r), p = Math.max(0, Math.min(100, Math.round(+m.potencial_pct||0)));
+  const c = p>=70 ? "var(--teal)" : p>=50 ? "var(--warn)" : "var(--danger)";
+  return `<article class="pcard" data-rid="${esc(x.id)}">
+    <div class="pcard-h"><b>${esc(S(x.nombre))}${isNew ? '<span class="badge-new">NUEVO</span>' : ""}</b><div class="pct-ring" style="--p:${p};--c:${c}"><span>${p}%</span></div></div>
+    <span class="chip-o">🌎 Gana en ${esc(S(z.pais_origen,"otro país"))}${dk.ventas_7d ? " · " + esc(S(dk.ventas_7d)) + " ventas en 7 días" : ""}</span>
+    <div class="ver">${esc(S(m.veredicto))}</div>
+    ${satHTML(r)}
+    <dl><div><dt>Precio de venta sugerido</dt><dd>${money(n.P)}</dd></div><div><dt>Costo proveedor</dt><dd>${money(n.C)}</dd></div>
+    <div><dt>CPA máximo</dt><dd>${money(n.maxCPA)}</dd></div><div><dt>En Colombia</dt><dd>${esc(S(z.colombia?.estado,"Sin testear"))}</dd></div></dl>
+    <div class="acts"><button type="button" class="pri" data-ract="ver">Ver análisis</button><button type="button" data-ract="ruta">Crear hoja de ruta</button><button type="button" data-ract="calc">Costeo</button><button type="button" data-ract="del">Descartar</button></div>
+  </article>`;
+}
+function renderRadar(){
+  const L = radarList(), seen = radarSeen();
+  $("#radarCount").textContent = L.length + (L.length===1 ? " producto" : " productos");
+  $("#radarAlertBox").innerHTML = radarAlertHTML();
+  if(!L.length){ $("#radarList").innerHTML = `<div class="empty-s">Todavía no hay productos en el radar. Cada mañana Claude revisa Dropkiller y los agrega aquí; te llega una notificación cuando hay nuevos.</div>`; radarDot(); return; }
+  const days = {}; L.forEach(x=>{ (days[S(x.fecha)] = days[S(x.fecha)] || []).push(x); });
+  $("#radarList").innerHTML = Object.entries(days).map(([d, xs])=>`<h3>${esc(fmtDia(d))}</h3><div class="prod-grid">${xs.map(x=>radarCardHTML(x, !seen.includes(x.id))).join("")}</div>`).join("");
+  setTimeout(radarMarkSeen, 4000);
+}
+function radarToForm(x){
+  const i = x.r?.__input || {}, z = x.r?.__radar || {}, an = z.angulo || {};
+  const set = (id, v) => { const el = $("#"+id); if(el && v!==undefined && v!==null && v!=="") el.value = v; };
+  set("rmNombre", S(x.nombre)); set("rmHace", S(i.hace)); set("rmCosto", +i.costo || ""); set("rmPrecio", +x.r?.__precio || "");
+  set("rmFlete", +i.flete || 15000); set("rmDevol", +i.devol || 20); set("rmTemp", S(i.temporada));
+  set("rmGanador", [an.anuncio_url, an.como_lo_venden && ("Cómo lo venden en " + S(z.pais_origen) + ": " + S(an.como_lo_venden)), an.gancho && ("Gancho: " + S(an.gancho))].filter(Boolean).join("\n"));
+  set("rmComp", A(x.r?.mercado?.competidores).map(c=>S(c.url || c.nombre)).filter(Boolean).join(", "));
+  go("productos", false); reveal("rmForm");
+}
+document.addEventListener("click", e=>{
+  if(e.target.closest("[data-radar-open]")){ go("radar"); return; }
+  const b = e.target.closest(".pcard [data-ract]"); if(!b) return;
+  const id = b.closest(".pcard").dataset.rid, x = data.radar.find(y=>y.id===id); if(!x) return;
+  if(b.dataset.ract==="ver"){ go("productos", false); rmShow(x.r); $("#rmToCalc").hidden = true; }
+  else if(b.dataset.ract==="ruta") radarToForm(x);
+  else if(b.dataset.ract==="calc") calcFromRoadmap(x);
+  else if(b.dataset.ract==="del"){
+    if(b.dataset.confirm){ store.set("ac.radar.hidden", [...radarHidden(), id]); renderRadar(); renderHome(); return; }
+    b.dataset.confirm = "1"; b.textContent = "¿Seguro? Toca otra vez";
+    setTimeout(()=>{ if(b.isConnected){ delete b.dataset.confirm; b.textContent = "Descartar"; } }, 3000);
+  }
+});
+async function radarLoadCloud(){
+  if(!cloud || PID!=="andres") return;
+  try{
+    const s = await db.collection("radar").orderBy("fecha","desc").limit(60).get();
+    const byId = new Map(data.radar.map(x=>[x.id, x]));
+    s.docs.forEach(d=>byId.set(d.id, {...d.data(), id:d.id}));
+    data.radar = [...byId.values()];
+    if(curView==="radar") renderRadar(); else { renderHome(); radarDot(); }
+  }catch{}
+}
 const VIEWS = [
   {id:"inicio", name:"Inicio", icon:"home", desc:""},
+  {id:"radar", name:"Radar diario", icon:"radar", desc:"De 2 a 3 productos nuevos cada día: ganadores en otros países y sin testear en Colombia, con su análisis."},
   {id:"productos", name:"Productos ganadores", icon:"trophy", desc:"Tus productos analizados con potencial, números y la hoja de ruta completa. Aquí también analizas productos nuevos."},
   {id:"calculadora", name:"Calculadora de costeo", icon:"numeros", desc:"Ganancia por pedido, CPA máximo y ROAS de equilibrio, en unidad y en combo."},
   {id:"estudio", name:"Estudio IA", icon:"contenido", desc:"Guiones, hooks, copy, fichas de producto, ventas por WhatsApp, correos e investigación web."},
@@ -1258,6 +1346,7 @@ function go(v, scroll=true){
   store.set("ac.view", v);
   if(v==="inicio") renderHome();
   if(v==="calculadora") calcRender();
+  if(v==="radar") renderRadar();
   if(scroll) window.scrollTo({top:0});
 }
 function reveal(id){
@@ -1267,7 +1356,7 @@ function reveal(id){
 }
 function renderNav(){
   $("#viewnav").innerHTML = VIEWS.map(v=>`<button type="button" data-v="${v.id}">${svg(v.icon,16)}${v.name}</button>`).join("");
-  $("#rail").insertAdjacentHTML("beforeend", VIEWS.map((v,i)=>`${i===1||i===5?'<div class="sep"></div>':""}<button type="button" data-v="${v.id}" title="${v.name}" aria-label="${v.name}">${svg(v.icon)}</button>`).join(""));
+  $("#rail").insertAdjacentHTML("beforeend", VIEWS.map((v,i)=>`${i===1||i===6?'<div class="sep"></div>':""}<button type="button" data-v="${v.id}" title="${v.name}" aria-label="${v.name}">${svg(v.icon)}</button>`).join(""));
 }
 document.addEventListener("click", e=>{
   const b = e.target.closest("[data-v]");
@@ -1307,9 +1396,10 @@ function renderHome(){
   const bs = best ? satOf(best.r) : null;
   $("#homeKpis").innerHTML = [[rms.length,"productos analizados"],[best ? Math.round(+best.r.mercado.potencial_pct)+" %" : "—","mejor potencial"+(best ? " · "+S(best.nombre) : "")],[bs===null ? "—" : bs+" %","saturación del mejor producto"],[pend,"tareas pendientes"],[data.saved.length,"resultados guardados"]]
     .map(([b,s])=>`<div class="kpi-c"><b>${esc(String(b))}</b><span>${esc(s)}</span></div>`).join("");
-  const counts = {productos:`${rms.length} productos`, calculadora:"Funciona sin internet", estudio:`${SKILLS.length} skills`, busqueda:"11 plataformas", tareas:`${pend} pendientes`, chat:`${data.chat.length} mensajes`};
+  const counts = {radar: radarNew().length ? radarNew().length + " nuevos para ti" : (data.radar.length + " productos"), productos:`${rms.length} productos`, calculadora:"Funciona sin internet", estudio:`${SKILLS.length} skills`, busqueda:"11 plataformas", tareas:`${pend} pendientes`, chat:`${data.chat.length} mensajes`};
   $("#homeGrid").innerHTML = VIEWS.filter(v=>v.id!=="inicio").map(v=>`<button type="button" class="home-card" data-v="${v.id}">${svg(v.icon,22)}<b>${v.name}</b><span>${v.desc}</span><small>${counts[v.id]||""}</small></button>`).join("");
-  $("#homeTop").innerHTML = rms.length ? `<h3>Tus productos ganadores</h3><div class="prod-grid">${rms.slice(0,3).map(pcardHTML).join("")}</div>` : "";
+  $("#homeKpis").insertAdjacentHTML("beforebegin", "");
+  $("#homeTop").innerHTML = radarAlertHTML() + (rms.length ? `<h3>Tus productos ganadores</h3><div class="prod-grid">${rms.slice(0,3).map(pcardHTML).join("")}</div>` : "");
 }
 function rmDelete(id){
   data.roadmaps = data.roadmaps.filter(x=>x.id!==id); rmPersistLocal();
@@ -1384,7 +1474,7 @@ $("#calcAI").addEventListener("click", async ()=>{
   finally{ b.disabled = false; }
 });
 
-renderNav();
+renderNav(); setTimeout(radarDot, 0);
 
 /* ================= Buscador global ================= */
 const gq = $("#gq"), gres = $("#gres");
@@ -1857,6 +1947,26 @@ function rmBody(r){
     if(A(mt.errores).length) meta += `<h3>Errores que te quitan ventas</h3><ol class="steps">${A(mt.errores).map(x=>`<li>${esc(S(x))}</li>`).join("")}</ol>`;
   }
 
+  if(r.__radar){
+    const z = r.__radar, dk = z.dropkiller || {}, co = z.colombia || {}, an = z.angulo || {};
+    let ori = `<h2>Gana en ${esc(S(z.pais_origen,"otro país"))}</h2><div class="kpis">
+<div class="kpi"><span>Ventas en 7 días (${esc(S(z.pais_origen))})</span><b>${esc(S(dk.ventas_7d,"—"))}</b></div>
+<div class="kpi"><span>Ventas en 30 días</span><b>${esc(S(dk.ventas_30d,"—"))}</b></div>
+<div class="kpi"><span>Stock del proveedor</span><b>${esc(S(dk.stock,"—"))}</b></div>
+<div class="kpi"><span>Precio de venta allá</span><b>${esc(S(dk.precio_venta,"—"))}</b></div>
+<div class="kpi"><span>Tendencia</span><b>${esc(S(dk.tendencia,"—"))}</b></div>
+<div class="kpi"><span>Visto en Dropkiller</span><b>${esc(fmtDia(z.fecha || r.__fecha || ""))}</b></div></div>`;
+    if(dk.nota) ori += `<div class="card">${linkify(S(dk.nota))}</div>`;
+    ori += `<h3>En Colombia</h3><div class="card"><b>Estado:</b> ${esc(S(co.estado,"Sin testear"))}<br><b>Proveedores en Dropi:</b> ${esc(S(co.proveedores,"—"))}<br><b>Ventas en Colombia (7 días):</b> ${esc(S(co.ventas_7d,"—"))}<br><b>Costo en Dropi:</b> ${esc(S(co.costo,"—"))}${co.nota ? "<br>" + esc(S(co.nota)) : ""}</div>`;
+    ori += `<h3>Cómo lo están vendiendo</h3><div class="card"><b>Ángulo:</b> ${esc(S(an.como_lo_venden))}<br><b>Gancho del anuncio:</b> ${esc(S(an.gancho))}<br><b>Oferta:</b> ${esc(S(an.oferta))}${an.anuncio_url ? "<br><b>Anuncio:</b> " + linkify(S(an.anuncio_url)) : ""}</div>`;
+    if(A(z.ideas).length) ori += `<h3>Cómo lo venderías aquí</h3><ol class="steps">${A(z.ideas).map(x=>`<li>${esc(S(x))}</li>`).join("")}</ol>`;
+    if(A(r.alertas).length) ori += `<div class="warn"><b>Antes de testear:</b><br>${A(r.alertas).map((a,k)=>`${k+1}. <b>${esc(S(a.titulo))}:</b> ${esc(S(a.texto))}`).join("<br>")}</div>`;
+    ori += `<div class="card">¿Te gusta? En el panel toca <b>Crear hoja de ruta</b> en este producto y Claude arma las variaciones, los prompts y la pestaña de Meta.</div>`;
+    const tb = [["origen","Por qué es ganador"],["mercado","Análisis para Colombia"]], sc = [["origen",ori],["mercado",merc]];
+    return `<div class="rm"><header><h1>${esc(S(r.titulo, r.__input?.nombre || "Producto del radar"))}</h1><p>${esc(S(r.subtitulo))}</p>
+<nav class="tabs">${tb.map(([k,l],j)=>`<button data-k="${k}" class="${j===0?"on":""}">${esc(l)}</button>`).join("")}</nav></header>
+<main>${sc.map(([k,x],j)=>`<section class="tab${j===0?" on":""}" id="${k}">${x}</section>`).join("")}</main></div>`;
+  }
   const sections = [["inicio",inicio], ...(r.meta ? [["meta",meta]] : []), ["mercado",merc], ...varTabs.map((s,k)=>["v"+(k+1), s]), ["ganchos",ganchos]];
   return `<div class="rm"><header><h1>${esc(S(r.titulo, r.__input?.nombre || "Hoja de ruta"))}</h1><p>${esc(S(r.subtitulo))}</p>
 <nav class="tabs">${tabs.map(([k,l],j)=>`<button data-k="${k}" class="${j===0?"on":""}">${esc(l)}</button>`).join("")}</nav></header>
@@ -1881,7 +1991,7 @@ function rmShow(r){
     setTimeout(()=>{ b.textContent="Copiar"; b.classList.remove("ok"); }, 1600);
   }));
   $("#rmViewTitle").textContent = S(r.titulo, "Hoja de ruta");
-  $("#rmDownload").hidden = false;
+  $("#rmDownload").hidden = false; $("#rmToCalc").hidden = !!r.__radar;
   $("#rmView").hidden = false; reveal("rmView");
 }
 $("#rmClose").addEventListener("click", ()=>{ $("#rmView").hidden = true; rmCurrent = null; });
