@@ -1398,7 +1398,6 @@ function renderHome(){
     .map(([b,s])=>`<div class="kpi-c"><b>${esc(String(b))}</b><span>${esc(s)}</span></div>`).join("");
   const counts = {radar: radarNew().length ? radarNew().length + " nuevos para ti" : (data.radar.length + " productos"), productos:`${rms.length} productos`, calculadora:"Funciona sin internet", estudio:`${SKILLS.length} skills`, busqueda:"11 plataformas", tareas:`${pend} pendientes`, chat:`${data.chat.length} mensajes`};
   $("#homeGrid").innerHTML = VIEWS.filter(v=>v.id!=="inicio").map(v=>`<button type="button" class="home-card" data-v="${v.id}">${svg(v.icon,22)}<b>${v.name}</b><span>${v.desc}</span><small>${counts[v.id]||""}</small></button>`).join("");
-  $("#homeKpis").insertAdjacentHTML("beforebegin", "");
   $("#homeTop").innerHTML = radarAlertHTML() + (rms.length ? `<h3>Tus productos ganadores</h3><div class="prod-grid">${rms.slice(0,3).map(pcardHTML).join("")}</div>` : "");
 }
 function rmDelete(id){
