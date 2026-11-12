@@ -1151,7 +1151,7 @@ async function callGemini(cfg, msgs, imgs, fnTools, web, opts, json){
           running--;
           if(done || e?.code==="lost_race") return;
           if(["google_expired","bad_key","refused"].includes(e?.code)) return finish(reject, e);
-          if(e?.code!=="cancelled"){ last = e; geminiMarkBad(model, e); }
+          if(e?.code!=="cancelled"){ last = e; if(!(web && e?.code==="rate_limited")) geminiMarkBad(model, e); }
           if(race.winner===me) return finish(reject, e); // ya estaba respondiendo y falló a mitad de camino
           if(!race.winner) launch();
           if(running<=0 && next>=chain.length && !race.winner) finish(reject, last || {code:"upstream_error", message:"Ningún modelo de Gemini respondió"});
