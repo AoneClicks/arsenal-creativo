@@ -992,21 +992,24 @@ const G_REDIRECT = location.origin + location.pathname;
 function gRedirect(prompt){
   const t = store.get("ac.gtok", null);
   const p = new URLSearchParams({client_id:GOOGLE_OAUTH.clientId, redirect_uri:G_REDIRECT, response_type:"token", scope:G_SCOPES, include_granted_scopes:"true", state: PID + "|" + (location.hash.slice(1) || "inicio") + "|" + (prompt || "")});
-  if(prompt) p.set("prompt", prompt);
+  if(prompt) p.set("prompt", prompt==="select_account" ? "select_account consent" : prompt);
   if(t?.email) p.set("login_hint", t.email);
   location.href = "https://accounts.google.com/o/oauth2/v2/auth?" + p.toString();
 }
 // Al volver de Google: guardar el permiso, dejar Gemini conectado y regresar a donde estaba.
 const G_BACK = (()=>{
+  const T = x => x==null ? "" : String(x);
   const h = location.hash.slice(1); if(!/(^|&)(access_token|error)=/.test(h)) return null;
-  const q = new URLSearchParams(h), st = S(q.get("state")).split("|");
+  const q = new URLSearchParams(h), st = T(q.get("state")).split("|");
   try{ history.replaceState(null, "", location.pathname + location.search + "#" + (st[1] || "inicio")); }catch{}
   if(q.get("access_token")){
-    store.set("ac.gtok", {token:q.get("access_token"), exp: Date.now() + (+q.get("expires_in") || 3600) * 1000, email: S(store.get("ac.gtok", null)?.email)});
-    const c = store.get("ac.ia", null); store.set("ac.ia", {prov:"gemini", auth:"google", model: c?.auth==="google" ? S(c.model) : ""});
+    // Google deja desmarcar permisos: sin el de Gemini el token no sirve para la IA.
+    if(!/generative-language|cloud-platform/.test(T(q.get("scope")))) return {ok:false, error:"falta_permiso", silent:false};
+    store.set("ac.gtok", {token:q.get("access_token"), exp: Date.now() + (+q.get("expires_in") || 3600) * 1000, email: T(store.get("ac.gtok", null)?.email)});
+    const c = store.get("ac.ia", null); store.set("ac.ia", {prov:"gemini", auth:"google", model: c?.auth==="google" ? T(c.model) : ""});
     return {ok:true};
   }
-  return {ok:false, error:S(q.get("error")), silent: st[2]==="none"};
+  return {ok:false, error:T(q.get("error")), silent: st[2]==="none"};
 })();
 function gLogin(prompt){
   return new Promise((ok, ko) => { if(!gInit()){ ko({code:"upstream_error", message:"Google aún no está listo"}); return; } gWaiting = {ok, ko}; gClient.requestAccessToken({prompt: prompt ?? ""}); });
@@ -2818,7 +2821,10 @@ initDb();
       setTimeout(()=>{ if(KEY_MODE?.auth==="google" && !gTok()) gNeedReconnect(); }, Math.max(0, store.get("ac.gtok", {exp:0}).exp - Date.now() - 60000));
       return;
     }
-    if(G_BACK && !G_BACK.ok && !G_BACK.silent) toast("No se completó el inicio de sesión con Google (" + G_BACK.error + "). Inténtalo otra vez.");
+    if(G_BACK && !G_BACK.ok && !G_BACK.silent){
+      if(G_BACK.error==="falta_permiso"){ const o = $("#offline"); o.hidden = false; setPill("pillAI","warn","IA: falta el permiso de Gemini"); toast("Google no dio el permiso de Gemini. Toca “Entrar con Google” otra vez y, en la pantalla de permisos, marca TODAS las casillas antes de Continuar.", 12000); }
+      else toast("No se completó el inicio de sesión con Google (" + G_BACK.error + "). Inténtalo otra vez.");
+    }
     if(c && c.key){ keyConnect(c, true); return; }
     setPill("pillAI","bad","IA: conecta tu IA"); $("#offline").hidden = false; renderWebPill(); return;
   }
