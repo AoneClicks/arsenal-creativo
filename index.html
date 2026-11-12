@@ -1091,7 +1091,7 @@ async function geminiModels(cfg, force){
     names = A(j.models).filter(m=>A(m.supportedGenerationMethods).includes("generateContent")).map(m=>S(m.name).replace(/^models\//,""));
   }catch(e){ if(e?.code==="google_expired") throw e; }
   const ok = x => !/(lite|image|tts|audio|live|embed|vision|thinking|exp|learnlm|gemma|robotics|computer|nano|banana)/i.test(x);
-  const ver = x => +(S(x).match(/gemini-(d+(?:.d+)?)/)||[0,0])[1];
+  const ver = x => +(S(x).match(/gemini-(\d+(?:\.\d+)?)/)||[0,0])[1];
   const best = re => names.filter(x=>re.test(x) && ok(x)).sort((a,b)=> ver(b)-ver(a) || (/preview/.test(a)-/preview/.test(b)) || a.length-b.length)[0];
   const flash = best(/^gemini-[d.]+-flash/) || (names.includes("gemini-flash-latest") ? "gemini-flash-latest" : "") || best(/flash/);
   const pro = best(/^gemini-[d.]+-pro/) || (names.includes("gemini-pro-latest") ? "gemini-pro-latest" : "") || flash;
