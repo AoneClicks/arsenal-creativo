@@ -2694,8 +2694,11 @@ ${prodLines}
   }
   if(r.__radar){
     const z = r.__radar, dk = z.dropkiller || {}, co = z.colombia || {}, an = z.angulo || {};
-    let ori = `<h2>Gana en ${esc(S(z.pais_origen,"otro país"))}</h2><div class="kpis">
-<div class="kpi"><span>Ventas en 7 días (${esc(S(z.pais_origen))})</span><b>${esc(S(dk.ventas_7d,"—"))}</b></div>
+    const esCO = z.tipo==="colombia";
+    let ori = (esCO ? `<h2>En testeo en Colombia: puedes entrar a competir</h2><div class="kpis">
+<div class="kpi"><span>Ventas por día</span><b>${esc(S(dk.ventas_dia,"—"))}</b></div>
+<div class="kpi"><span>Ventas en 7 días</span><b>${esc(S(dk.ventas_7d,"—"))}</b></div>` : `<h2>Gana en ${esc(S(z.pais_origen,"otro país"))}</h2><div class="kpis">
+<div class="kpi"><span>Ventas en 7 días (${esc(S(z.pais_origen))})</span><b>${esc(S(dk.ventas_7d,"—"))}</b></div>`) + `
 <div class="kpi"><span>Ventas en 30 días</span><b>${esc(S(dk.ventas_30d,"—"))}</b></div>
 <div class="kpi"><span>Stock del proveedor</span><b>${esc(S(dk.stock,"—"))}</b></div>
 <div class="kpi"><span>Precio de venta allá</span><b>${esc(S(dk.precio_venta,"—"))}</b></div>
