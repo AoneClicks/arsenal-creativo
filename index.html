@@ -1093,8 +1093,8 @@ async function geminiModels(cfg, force){
   const ok = x => !/(lite|image|tts|audio|live|embed|vision|thinking|exp|learnlm|gemma|robotics|computer|nano|banana)/i.test(x);
   const ver = x => +(S(x).match(/gemini-(\d+(?:\.\d+)?)/)||[0,0])[1];
   const best = re => names.filter(x=>re.test(x) && ok(x)).sort((a,b)=> ver(b)-ver(a) || (/preview/.test(a)-/preview/.test(b)) || a.length-b.length)[0];
-  const flash = best(/^gemini-[d.]+-flash/) || (names.includes("gemini-flash-latest") ? "gemini-flash-latest" : "") || best(/flash/);
-  const pro = best(/^gemini-[d.]+-pro/) || (names.includes("gemini-pro-latest") ? "gemini-pro-latest" : "") || flash;
+  const flash = best(/^gemini-[\d.]+-flash/) || (names.includes("gemini-flash-latest") ? "gemini-flash-latest" : "") || best(/flash/);
+  const pro = best(/^gemini-[\d.]+-pro/) || (names.includes("gemini-pro-latest") ? "gemini-pro-latest" : "") || flash;
   const r = flash ? {t:Date.now(), quick:flash, default:flash, complex:pro || flash} : {t:Date.now(), ...G_ALIAS, alias:true};
   if(!r.alias) store.set("ac.gmodels", r);
   return r;
