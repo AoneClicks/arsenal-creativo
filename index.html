@@ -1171,7 +1171,7 @@ async function gemCall(url, init, signal){
   catch(e){ if(timedOut) throw {code:"upstream_error", message:"Google no respondió en 45 segundos"}; if(signal?.aborted) throw {code:"cancelled"}; throw e; }
   finally{ clearTimeout(timer); signal?.removeEventListener?.("abort", onAbort); }
 }
-async function callGemini1(cfg, model, msgs, imgs, fnTools, web, opts, json){
+async function callGemini1(cfg, model, msgs, imgs, fnTools, web, opts, json, race, me){
   const status = opts.__status || (()=>{});
   const textTasks = web && fnTools.length;
   const contents = msgs.map(m=>({role: m.role==="assistant" ? "model" : "user", parts:[{text:S(m.content)}]}));
