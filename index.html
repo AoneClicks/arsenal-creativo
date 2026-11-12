@@ -1696,6 +1696,7 @@ function radarAlertHTML(){
   return `<button type="button" class="radar-alert" data-radar-open><span class="bell">🔔</span><div><b>Hey ${esc(PNAME)}, mira estos nuevos productos</b><br><span>${nw.length} ${nw.length===1?"producto nuevo":"productos nuevos"} en el Radar diario: ${nw.slice(0,3).map(x=>esc(S(x.nombre))).join(" · ")}</span></div></button>`;
 }
 const fmtDia = d => { try{ const t = new Date(S(d)+"T12:00:00"); const hoy = new Date(); const ay = new Date(Date.now()-864e5); const k = x=>x.toISOString().slice(0,10); return k(t)===k(hoy) ? "Hoy" : k(t)===k(ay) ? "Ayer" : t.toLocaleDateString("es-CO",{weekday:"long", day:"numeric", month:"long"}); }catch{ return S(d); } };
+const radarEsCO = x => x?.r?.__radar?.tipo==="colombia";
 function radarCardHTML(x, isNew){
   const r = x.r || {}, m = r.mercado || {}, z = r.__radar || {}, dk = z.dropkiller || {}, n = rmNumbers(r), p = Math.max(0, Math.min(100, Math.round(+m.potencial_pct||0)));
   const c = p>=70 ? "var(--teal)" : p>=50 ? "var(--warn)" : "var(--danger)";
