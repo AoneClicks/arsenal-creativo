@@ -1714,9 +1714,16 @@ function renderRadar(){
   const L = radarList(), seen = radarSeen();
   $("#radarCount").textContent = L.length + (L.length===1 ? " producto" : " productos");
   $("#radarAlertBox").innerHTML = radarAlertHTML();
-  if(!L.length){ $("#radarList").innerHTML = `<div class="empty-s">Todavía no hay productos en el radar. Cada mañana Claude revisa Dropkiller y los agrega aquí; te llega una notificación cuando hay nuevos.</div>`; radarDot(); return; }
-  const days = {}; L.forEach(x=>{ (days[S(x.fecha)] = days[S(x.fecha)] || []).push(x); });
-  $("#radarList").innerHTML = Object.entries(days).map(([d, xs])=>`<h3>${esc(fmtDia(d))}</h3><div class="prod-grid">${xs.map(x=>radarCardHTML(x, !seen.includes(x.id))).join("")}</div>`).join("");
+  const grupo = (titulo, nota, xs, vacio) => {
+    let h = `<h2 style="margin:18px 0 2px;font-family:var(--f-display);font-size:22px">${titulo}</h2><p style="margin:0 0 6px;color:var(--muted)">${nota}</p>`;
+    if(!xs.length) return h + `<div class="empty-s">${vacio}</div>`;
+    const days = {}; xs.forEach(x=>{ (days[S(x.fecha)] = days[S(x.fecha)] || []).push(x); });
+    return h + Object.entries(days).map(([d, ys])=>`<h3>${esc(fmtDia(d))}</h3><div class="prod-grid">${ys.map(x=>radarCardHTML(x, !seen.includes(x.id))).join("")}</div>`).join("");
+  };
+  const co = L.filter(radarEsCO), afuera = L.filter(x=>!radarEsCO(x));
+  $("#radarList").innerHTML =
+    grupo("🌎 Ganadores afuera, sin testear en Colombia", "Venden fuerte en otros países y casi nadie los vende aquí. Nadie en Colombia los ofrece por debajo de costo + $75.000.", afuera, "Hoy no hay productos de afuera que cumplan tus requisitos. Claude vuelve a buscar mañana a las 7 a. m.") +
+    grupo("🇨🇴 En testeo en Colombia: para entrar a competir", "Ya venden de 70 a 100 por semana en Colombia (unos 10 al día), todavía no están saturados y la competencia los vende a tu precio o más caro.", co, "Hoy no hay productos en testeo en Colombia que cumplan tus requisitos. Claude vuelve a buscar mañana a las 7 a. m.");
   setTimeout(radarMarkSeen, 4000);
 }
 function radarToForm(x){
