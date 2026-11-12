@@ -1130,23 +1130,37 @@ async function callGemini(cfg, msgs, imgs, fnTools, web, opts, json){
     try{ return await callGemini1(cfg, cfg.model, msgs, imgs, fnTools, web, opts, json); }
     catch(e){ if(e?.code!=="bad_model") throw e; cfg = {...cfg, model:""}; const c = keyCfg(); if(c) store.set("ac.ia", {...c, model:""}); }
   }
-  let m = await geminiModels(cfg, false);
-  let chain = geminiChain(m, opts.modelTier || "default");
-  let last = null, tries = 0;
-  for(let i = 0; i < chain.length && tries < 5; i++){
-    const model = chain[i]; tries++;
-    try{
-      const r = await callGemini1(cfg, model, msgs, imgs, fnTools, web, opts, json);
-      store.set("ac.gok", model);
-      return r;
-    }catch(e){
-      if(["cancelled","google_expired","bad_key","refused"].includes(e?.code)) throw e;
-      last = e; geminiMarkBad(model, e);
-      if(e?.code==="bad_model" && !m.tmp){ m = await geminiModels(cfg, true); chain = [...chain.slice(0, i+1), ...geminiChain(m, opts.modelTier || "default").filter(x=>!chain.slice(0, i+1).includes(x))]; }
-      if(i + 1 < chain.length) status(model + " está ocupado; probando " + chain[i+1] + "…");
-    }
-  }
-  throw last || {code:"upstream_error", message:"Ningún modelo de Gemini respondió"};
+  const m = await geminiModels(cfg, false);
+  const chain = geminiChain(m, opts.modelTier || "default").slice(0, 6);
+  // Respaldo en paralelo: si un modelo no contesta en 6 s, se pregunta también al siguiente y gana el primero que responda.
+  // El primero que trae respuesta "reclama" la carrera y los demás se cancelan (así las tareas no se anotan dos veces).
+  return await new Promise((resolve, reject) => {
+    const race = {winner:null, ctrls:[]};
+    let next = 0, running = 0, done = false, last = null, timer = null;
+    const finish = (fn, v) => { if(done) return; done = true; clearTimeout(timer); race.ctrls.forEach(c=>{ try{ c.abort(); }catch{} }); opts.signal?.removeEventListener?.("abort", onUserAbort); fn(v); };
+    const onUserAbort = () => finish(reject, {code:"cancelled"});
+    opts.signal?.addEventListener?.("abort", onUserAbort);
+    const launch = () => {
+      if(done || next >= chain.length) return;
+      const model = chain[next++], ctrl = new AbortController(), me = {model};
+      race.ctrls.push(ctrl); running++;
+      if(next > 1) status("Gemini está lento; pidiendo también a " + model + "…");
+      callGemini1(cfg, model, msgs, imgs, fnTools, web, {...opts, signal:ctrl.signal}, json, race, me)
+        .then(r => { store.set("ac.gok", model); finish(resolve, r); })
+        .catch(e => {
+          running--;
+          if(done || e?.code==="lost_race") return;
+          if(["google_expired","bad_key","refused"].includes(e?.code)) return finish(reject, e);
+          if(e?.code!=="cancelled"){ last = e; geminiMarkBad(model, e); }
+          if(race.winner===me) return finish(reject, e); // ya estaba respondiendo y falló a mitad de camino
+          if(!race.winner) launch();
+          if(running<=0 && next>=chain.length && !race.winner) finish(reject, last || {code:"upstream_error", message:"Ningún modelo de Gemini respondió"});
+        });
+      clearTimeout(timer); timer = setTimeout(()=>{ if(!race.winner) launch(); }, 6000);
+    };
+    if(!chain.length) return finish(reject, {code:"bad_model", message:"No hay modelos de Gemini disponibles para esta cuenta"});
+    launch();
+  });
 }
 // Una llamada normal (no en vivo: en estas cuentas el modo en vivo de Google tarda mucho más). Límite: 45 s por intento.
 async function gemCall(url, init, signal){
