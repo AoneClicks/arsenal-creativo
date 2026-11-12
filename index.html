@@ -2701,7 +2701,7 @@ ${prodLines}
 <div class="kpi"><span>Ventas en 7 días (${esc(S(z.pais_origen))})</span><b>${esc(S(dk.ventas_7d,"—"))}</b></div>`) + `
 <div class="kpi"><span>Ventas en 30 días</span><b>${esc(S(dk.ventas_30d,"—"))}</b></div>
 <div class="kpi"><span>Stock del proveedor</span><b>${esc(S(dk.stock,"—"))}</b></div>
-<div class="kpi"><span>Precio de venta allá</span><b>${esc(S(dk.precio_venta,"—"))}</b></div>
+<div class="kpi"><span>${esCO ? "Precio de la competencia" : "Precio de venta allá"}</span><b>${esc(S(dk.precio_venta,"—"))}</b></div>
 <div class="kpi"><span>Tendencia</span><b>${esc(S(dk.tendencia,"—"))}</b></div>
 <div class="kpi"><span>Visto en Dropkiller</span><b>${esc(fmtDia(z.fecha || r.__fecha || ""))}</b></div></div>`;
     if(dk.nota) ori += `<div class="card">${linkify(S(dk.nota))}</div>`;
