@@ -1828,7 +1828,7 @@ function rmPromptModelo(m, r){
   const p = r.producto || {}, per = !!S(m.persona_en);
   return `[STYLE LOCK]: ${S(m.estilo_en, "High-end commercial advertising photo for a social ad, scroll-stopping, true to life color, crisp detail, professional retouching")}
 [SUBJECT]: ${per ? S(m.persona_en) + "; " : ""}${fillProduct("{PRODUCTO}", p)}
-[ACTION]: ${fillProduct(S(m.action_en), p)}
+[ACTION]: ${S(m.action_en).replace(/\{PRODUCTO\}/g, S(p.nombre_corto_en, "the product"))}
 [ENVIRONMENT]: ${S(m.environment_en)}
 [LIGHTING]: ${S(m.lighting_en, "soft natural light with gentle contrast")}
 [CAMERA]: ${S(m.camera_en, "eye-level medium shot, shallow depth of field")}; leave clean empty space in the ${S(m.espacio_en, "upper third")} for a headline
