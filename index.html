@@ -1081,78 +1081,84 @@ function geminiAuth(cfg){
   if(cfg.auth==="google"){ const t = gTok(); if(!t) throw {code:"google_expired"}; return {"authorization":"Bearer " + t.token}; }
   return {"x-goog-api-key":cfg.key};
 }
-const G_ALIAS = {quick:"gemini-flash-latest", default:"gemini-flash-latest", complex:"gemini-pro-latest"};
+// Google retira modelos y a veces los satura: armamos una fila de modelos por nivel (del mejor al más liviano)
+// con los que esta cuenta tiene disponibles, y si uno falla (saturado, sin cupo, retirado o lento) se usa el siguiente.
+const G_FALLBACK = ["gemini-flash-latest", "gemini-flash-lite-latest"];
 async function geminiModels(cfg, force){
-  const c = store.get("ac.gmodels", null);
-  if(!force && c && c.t > Date.now() - 86400000 && c.quick) return c;
+  const c = store.get("ac.gmodels2", null);
+  if(!force && c && c.t > Date.now() - 86400000 && A(c.flash).length) return c;
   let names = [];
   try{
     const tc = new AbortController(); const tt = setTimeout(()=>tc.abort(), 15000);
     const j = await keyFetch("https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000", {headers:geminiAuth(cfg)}, tc.signal).finally(()=>clearTimeout(tt));
     names = A(j.models).filter(m=>A(m.supportedGenerationMethods).includes("generateContent")).map(m=>S(m.name).replace(/^models\//,""));
   }catch(e){ if(e?.code==="google_expired") throw e; }
-  const ok = x => !/(lite|image|tts|audio|live|embed|vision|thinking|-exp|learnlm|gemma|robotics|computer|nano|banana|customtools)/i.test(x);
   const ver = x => +(S(x).match(/gemini-(\d+(?:\.\d+)?)/)||[0,0])[1];
-  const best = re => names.filter(x=>re.test(x) && ok(x)).sort((a,b)=> ver(b)-ver(a) || (/preview/.test(a)-/preview/.test(b)) || a.length-b.length)[0];
-  const flash = best(/^gemini-[\d.]+-flash/) || (names.includes("gemini-flash-latest") ? "gemini-flash-latest" : "") || best(/flash/);
-  const pro = best(/^gemini-[\d.]+-pro/) || (names.includes("gemini-pro-latest") ? "gemini-pro-latest" : "") || flash;
-  const r = flash ? {t:Date.now(), quick:flash, default:flash, complex:pro || flash} : {t:Date.now(), ...G_ALIAS, alias:true};
-  if(!r.alias) store.set("ac.gmodels", r);
+  const bad = /(image|tts|audio|live|embed|vision|thinking|-exp|learnlm|gemma|robotics|computer|nano|banana|customtools|transcribe)/i;
+  const sortV = l => l.sort((a,b)=> ver(b)-ver(a) || (/preview/.test(a)-/preview/.test(b)) || a.length-b.length);
+  const flash = sortV(names.filter(x=>/^gemini-[\d.]+-flash/.test(x) && !/lite/.test(x) && !bad.test(x)));
+  const pro = sortV(names.filter(x=>/^gemini-[\d.]+-pro/.test(x) && !bad.test(x)));
+  const lite = sortV(names.filter(x=>/^gemini-[\d.]+-flash-lite/.test(x) && !bad.test(x)));
+  const has = x => names.includes(x) ? [x] : [];
+  const r = {t:Date.now(),
+    flash: [...flash, ...has("gemini-flash-latest")],
+    pro: [...pro, ...has("gemini-pro-latest")],
+    lite: [...lite, ...has("gemini-flash-lite-latest")]};
+  if(!r.flash.length && !r.lite.length) return {t:Date.now(), flash:G_FALLBACK.slice(0,1), pro:[], lite:G_FALLBACK.slice(1), tmp:true};
+  store.set("ac.gmodels2", r);
   return r;
 }
-// Respuesta en vivo (va apareciendo mientras Gemini escribe). Si Google se queda callado 90 s, se corta con aviso.
-async function gemStream(url, init, signal, onText){
-  const ctrl = new AbortController(); let timedOut = false, timer = null;
-  const arm = () => { clearTimeout(timer); timer = setTimeout(()=>{ timedOut = true; ctrl.abort(); }, 90000); };
-  const onAbort = () => ctrl.abort(); signal?.addEventListener?.("abort", onAbort);
-  arm();
-  try{
-    let res;
-    try{ res = await fetch(url, {...init, signal:ctrl.signal}); }
-    catch(e){ throw timedOut ? {code:"upstream_error", message:"Google no respondió en 90 segundos"} : {code: signal?.aborted ? "cancelled" : "upstream_error", message:String(e?.message||e)}; }
-    if(!res.ok){ const raw = await res.text(); let j = null; try{ j = JSON.parse(raw); }catch{} throw keyErr(res.status, (Array.isArray(j) ? j[0] : j)?.error?.message || raw.slice(0,300)); }
-    const parts = [], out = {candidates:[{content:{parts}}]};
-    let text = "", buf = "";
-    const take = ev => {
-      let j; try{ j = JSON.parse(ev); }catch{ return; }
-      if(j.promptFeedback) out.promptFeedback = j.promptFeedback;
-      const c = A(j.candidates)[0]; if(!c) return;
-      if(c.finishReason) out.candidates[0].finishReason = c.finishReason;
-      for(const p of A(c.content?.parts)){
-        const prev = parts[parts.length-1];
-        if(typeof p.text==="string" && prev && typeof prev.text==="string" && !!prev.thought===!!p.thought && !p.thoughtSignature && !prev.functionCall){ prev.text += p.text; }
-        else parts.push({...p});
-        if(typeof p.text==="string" && !p.thought){ text += p.text; onText?.(text); }
-      }
-    };
-    const rd = res.body.getReader(), dec = new TextDecoder();
-    for(;;){
-      let r;
-      try{ r = await rd.read(); }
-      catch(e){ throw timedOut ? {code:"upstream_error", message:"Google dejó de responder (90 segundos sin datos)"} : {code: signal?.aborted ? "cancelled" : "upstream_error", message:String(e?.message||e), text}; }
-      if(r.done) break;
-      arm(); buf += dec.decode(r.value, {stream:true});
-      let k; while((k = buf.indexOf("\n\n")) >= 0 || (k = buf.indexOf("\r\n\r\n")) >= 0){
-        const chunk = buf.slice(0, k); buf = buf.slice(k + (buf[k]==="\r" ? 4 : 2));
-        const data = chunk.split(/\r?\n/).filter(l=>l.startsWith("data:")).map(l=>l.slice(5).trim()).join("");
-        if(data) take(data);
-      }
-    }
-    const rest = buf.split(/\r?\n/).filter(l=>l.startsWith("data:")).map(l=>l.slice(5).trim()).join(""); if(rest) take(rest);
-    return out;
-  } finally { clearTimeout(timer); signal?.removeEventListener?.("abort", onAbort); }
+function geminiChain(m, tier){
+  const base = tier==="complex" ? [...m.pro, ...m.flash, ...m.lite] : tier==="quick" ? [...m.flash.slice(0,3), ...m.lite, ...m.flash.slice(3)] : [...m.flash, ...m.lite];
+  const down = store.get("ac.gbad", {}) || {}, now = Date.now();
+  const list = [...new Set(base)];
+  const ok = list.filter(x => !(down[x] > now)), rest = list.filter(x => down[x] > now).sort((a,b)=>down[a]-down[b]);
+  const lastOk = store.get("ac.gok", null);
+  if(lastOk && ok.includes(lastOk) && tier!=="complex"){ ok.splice(ok.indexOf(lastOk),1); ok.unshift(lastOk); }
+  return [...ok, ...rest];
+}
+function geminiMarkBad(model, e){
+  const down = store.get("ac.gbad", {}) || {};
+  const ms = e?.code==="bad_model" ? 7*86400000 : 10*60000; // retirado: 1 semana · saturado o sin cupo: 10 minutos
+  down[model] = Date.now() + ms;
+  for(const k of Object.keys(down)) if(down[k] < Date.now()) delete down[k];
+  store.set("ac.gbad", down);
 }
 async function callGemini(cfg, msgs, imgs, fnTools, web, opts, json){
-  try{ return await callGemini1(cfg, msgs, imgs, fnTools, web, opts, json, false); }
-  catch(e){
-    if(e?.code!=="bad_model") throw e;
-    if(cfg.model){ cfg = {...cfg, model:""}; const c = keyCfg(); if(c) store.set("ac.ia", {...c, model:""}); } // modelo escrito a mano que ya no existe: usar el automático
-    return await callGemini1(cfg, msgs, imgs, fnTools, web, opts, json, true);
-  }
-}
-async function callGemini1(cfg, msgs, imgs, fnTools, web, opts, json, force){
   const status = opts.__status || (()=>{});
-  const model = cfg.model || (await geminiModels(cfg, force))[opts.modelTier||"default"];
+  if(cfg.model){
+    try{ return await callGemini1(cfg, cfg.model, msgs, imgs, fnTools, web, opts, json); }
+    catch(e){ if(e?.code!=="bad_model") throw e; cfg = {...cfg, model:""}; const c = keyCfg(); if(c) store.set("ac.ia", {...c, model:""}); }
+  }
+  let m = await geminiModels(cfg, false);
+  let chain = geminiChain(m, opts.modelTier || "default");
+  let last = null, tries = 0;
+  for(let i = 0; i < chain.length && tries < 5; i++){
+    const model = chain[i]; tries++;
+    try{
+      const r = await callGemini1(cfg, model, msgs, imgs, fnTools, web, opts, json);
+      store.set("ac.gok", model);
+      return r;
+    }catch(e){
+      if(["cancelled","google_expired","bad_key","refused"].includes(e?.code)) throw e;
+      last = e; geminiMarkBad(model, e);
+      if(e?.code==="bad_model" && !m.tmp){ m = await geminiModels(cfg, true); chain = [...chain.slice(0, i+1), ...geminiChain(m, opts.modelTier || "default").filter(x=>!chain.slice(0, i+1).includes(x))]; }
+      if(i + 1 < chain.length) status(model + " está ocupado; probando " + chain[i+1] + "…");
+    }
+  }
+  throw last || {code:"upstream_error", message:"Ningún modelo de Gemini respondió"};
+}
+// Una llamada normal (no en vivo: en estas cuentas el modo en vivo de Google tarda mucho más). Límite: 45 s por intento.
+async function gemCall(url, init, signal){
+  const ctrl = new AbortController(); let timedOut = false;
+  const timer = setTimeout(()=>{ timedOut = true; ctrl.abort(); }, 45000);
+  const onAbort = () => ctrl.abort(); signal?.addEventListener?.("abort", onAbort);
+  try{ return await keyFetch(url, init, ctrl.signal); }
+  catch(e){ if(timedOut) throw {code:"upstream_error", message:"Google no respondió en 45 segundos"}; if(signal?.aborted) throw {code:"cancelled"}; throw e; }
+  finally{ clearTimeout(timer); signal?.removeEventListener?.("abort", onAbort); }
+}
+async function callGemini1(cfg, model, msgs, imgs, fnTools, web, opts, json){
+  const status = opts.__status || (()=>{});
   const textTasks = web && fnTools.length;
   const contents = msgs.map(m=>({role: m.role==="assistant" ? "model" : "user", parts:[{text:S(m.content)}]}));
   const last = contents[contents.length-1];
@@ -1163,11 +1169,9 @@ async function callGemini1(cfg, msgs, imgs, fnTools, web, opts, json, force){
   else if(fnTools.length) body.tools = [{functionDeclarations: fnTools.map(t=>({name:t.name, description:S(t.description), ...(t.inputSchema ? {parameters:t.inputSchema} : {})}))}];
   if(json && !web && !fnTools.length) body.generationConfig = {responseMimeType:"application/json"};
   status("Usando " + model + (web ? " · buscando en la web con Google…" : ""));
-  let shown = "";
   for(let turn = 0; turn < 10; turn++){
     const auth = geminiAuth(cfg);
-    const j = await gemStream(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`, {method:"POST", headers:{"content-type":"application/json", ...auth}, body:JSON.stringify(body)}, opts.signal,
-      t => { if(!textTasks && opts.onText){ shown = t; opts.onText({text:t, delta:""}); } });
+    const j = await gemCall(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {method:"POST", headers:{"content-type":"application/json", ...auth}, body:JSON.stringify(body)}, opts.signal);
     const cand = A(j.candidates)[0];
     if(!cand){ if(j.promptFeedback?.blockReason) throw {code:"refused"}; throw {code:"empty_completion"}; }
     const parts = A(cand.content?.parts);
@@ -1179,6 +1183,7 @@ async function callGemini1(cfg, msgs, imgs, fnTools, web, opts, json, force){
     }
     const text = parts.filter(p=>typeof p.text==="string" && !p.thought).map(p=>p.text).join("");
     if(!text && cand.finishReason==="SAFETY") throw {code:"refused"};
+    if(!text) throw {code:"empty_completion"};
     return textTasks ? tareasDeTexto(text, fnTools, opts.signal) : text;
   }
   return "";
