@@ -357,6 +357,24 @@ body.locked .app{visibility:hidden}
   </div>
 </div>
 
+<dialog id="iaDlg" style="max-width:460px;width:92vw;background:var(--panel);color:var(--fg);border:1px solid var(--line-2);border-radius:18px;padding:22px">
+  <form method="dialog" id="iaForm" style="display:flex;flex-direction:column;gap:12px">
+    <h3 style="margin:0;font-family:var(--f-display)">🤖 Conectar mi IA</h3>
+    <p style="margin:0;color:var(--muted);font-size:13.5px">Elige tu IA y pega tu clave de API. Se guarda solo en este navegador y en tu perfil, y la IA se usa directo desde aquí: nadie más la ve.</p>
+    <label style="display:flex;flex-direction:column;gap:6px;font-size:13px">IA<select id="iaProv" style="padding:10px;border-radius:10px;background:var(--bg);color:var(--fg);border:1px solid var(--line-2)">
+      <option value="gemini">Gemini (Google) · gratis para empezar</option><option value="openai">ChatGPT (OpenAI)</option><option value="claude">Claude (Anthropic)</option></select></label>
+    <small id="iaNota" style="color:var(--muted);line-height:1.5"></small>
+    <label style="display:flex;flex-direction:column;gap:6px;font-size:13px">Clave de API<input id="iaKey" type="password" autocomplete="off" spellcheck="false" style="padding:10px;border-radius:10px;background:var(--bg);color:var(--fg);border:1px solid var(--line-2)"></label>
+    <label style="display:flex;flex-direction:column;gap:6px;font-size:13px">Modelo<input id="iaModel" autocomplete="off" spellcheck="false" style="padding:10px;border-radius:10px;background:var(--bg);color:var(--fg);border:1px solid var(--line-2)"></label>
+    <small style="color:var(--muted)">No pongas tu clave en un computador que usa otra gente sin perfil propio.</small>
+    <div id="iaMsg" style="min-height:18px;font-size:13px;color:var(--warn)"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+      <button type="button" class="lockbtn" id="iaOff" hidden>Desconectar</button>
+      <button type="button" class="lockbtn" id="iaCancel">Cancelar</button>
+      <button type="button" class="lockbtn" id="iaSave" style="color:#1b1206;background:var(--amber);border-color:var(--amber)">Probar y conectar</button>
+    </div>
+  </form>
+</dialog>
 <div class="app">
   <nav class="rail" aria-label="Secciones" id="rail">
     <div class="logo" aria-hidden="true">A</div>
@@ -369,6 +387,7 @@ body.locked .app{visibility:hidden}
       <div class="head">
         <h1>Arsenal Creativo <span id="profName">· Andrés</span></h1>
         <button type="button" class="lockbtn" id="switchNow" title="Salir de este perfil y entrar con otro">👤 Cambiar perfil</button>
+        <button type="button" class="lockbtn" id="iaBtn" title="Conectar o cambiar tu IA" hidden>🤖 Conectar mi IA</button>
         <button type="button" class="lockbtn" id="lockNow" title="Bloquear el panel">🔒 Bloquear</button>
         <div class="pills">
           <span class="pill" id="pillAI"><i></i><span>IA: conectando…</span></span>
@@ -393,7 +412,9 @@ body.locked .app{visibility:hidden}
       <nav class="viewnav" id="viewnav" aria-label="Apartados"></nav>
 
       <div class="offline" id="offline" hidden>
-        <b>Estás usando la copia sin internet.</b> Aquí funcionan tus hojas de ruta, la calculadora, la búsqueda rápida y las tareas. Para tener la IA, la web y la nube, ábrelo en tu app de Claude:
+        <b>Conecta tu IA para usar todo el panel.</b> Sin cuenta de Claude puedes entrar con tu propia clave de <b>Gemini</b> (gratis para empezar), <b>ChatGPT</b> o <b>Claude</b>: se activan la IA, la búsqueda web, el generador de hojas de ruta, el Estudio y el Chat.
+        <button type="button" class="lockbtn" id="iaBtn2" style="margin-left:6px;color:#1b1206;background:var(--amber);border-color:var(--amber)">🤖 Conectar mi IA</button>
+        <span style="color:var(--muted)"> · Si tienes la app de Claude:</span>
         <a class="lockbtn" href="claude://claude.ai/artifact/KU4ycKwWnTMqXWPiXMsDbq" style="margin-left:6px;color:var(--amber);border-color:var(--amber);text-decoration:none">Abrir con todo activo</a>
       </div>
 
@@ -783,6 +804,11 @@ document.addEventListener("keydown", e=>{
 }, true);
 lockInput.addEventListener("input", ()=>{ lockInput.value = ""; });
 document.getElementById("lockNow").addEventListener("click", ()=>lockShow());
+["iaBtn","iaBtn2"].forEach(id=>document.getElementById(id)?.addEventListener("click", ()=>iaOpen()));
+document.getElementById("iaProv").addEventListener("change", ()=>iaPaint());
+document.getElementById("iaCancel").addEventListener("click", ()=>document.getElementById("iaDlg").close());
+document.getElementById("iaSave").addEventListener("click", ()=>iaSave());
+document.getElementById("iaOff").addEventListener("click", ()=>{ store.set("ac.ia", null); location.reload(); });
 document.getElementById("switchNow").addEventListener("click", ()=>{ lockShow(true); lockText.textContent = "Estabas en el perfil de " + PNAME + ". ¿Quién va a trabajar?"; });
 ["click","keydown","pointermove","scroll"].forEach(ev=>document.addEventListener(ev, ()=>{ if(lockEl.hidden) armIdle(); }, {passive:true}));
 document.getElementById("profName").textContent = "· " + PNAME;
@@ -918,16 +944,206 @@ async function ask(input, {onText, signal, web=false, tasks=false, status=()=>{}
   if(toolsOk){ if(web && webOk) tools.push(...webTools(status)); if(tasks) tools.push(...taskTools(status)); }
   const opts = {modelTier:tier, signal, onText};
   if(tools.length) opts.tools = tools; else opts.cache = false;
-  if(IS_LOCAL) opts.__status = status;
+  if(IS_LOCAL || KEY_MODE) opts.__status = status;
   return sample(input, opts);
 }
+/* ================= IA con clave propia (Gemini, ChatGPT o Claude) =================
+   Para quien abre el panel fuera de Claude (por ejemplo, el HTML publicado en GitHub).
+   Cada persona usa SU clave de API: se guarda solo en este navegador y en su perfil, y las
+   peticiones van directo del navegador a Google, OpenAI o Anthropic (nunca a GitHub ni a otro servidor). */
+const KEY_PROVS = {
+  gemini: {n:"Gemini (Google)", corto:"Gemini", url:"https://aistudio.google.com/apikey", nota:"Gratis para empezar: entra con tu cuenta de Google en Google AI Studio y toca “Create API key”.", models:{quick:"gemini-2.5-flash", default:"gemini-2.5-flash", complex:"gemini-2.5-pro"}},
+  openai: {n:"ChatGPT (OpenAI)", corto:"ChatGPT", url:"https://platform.openai.com/api-keys", nota:"Necesitas una clave de la plataforma de OpenAI con saldo (la suscripción de ChatGPT Plus no trae clave de API).", models:{quick:"gpt-4.1-mini", default:"gpt-4.1", complex:"gpt-4.1"}},
+  claude: {n:"Claude (Anthropic)", corto:"Claude", url:"https://console.anthropic.com/settings/keys", nota:"Necesitas una clave de la consola de Anthropic con saldo (la suscripción de Claude Pro no trae clave de API).", models:{quick:"claude-opus-5-5", default:"claude-opus-5-5", complex:"claude-opus-5-5"}},
+};
+let KEY_MODE = null; // {prov, key, model} cuando hay una IA con clave conectada
+const keyCfg = () => store.get("ac.ia", null);
+function keyErr(status, msg){
+  const m = String(msg||"");
+  if(status===401 || status===403 || /api[_ ]?key|invalid.*key|permission|unauthori/i.test(m)) return {code:"bad_key", message:m};
+  if(status===429 || /quota|rate|exhausted|insufficient_quota|credit balance/i.test(m)) return {code:"rate_limited", message:m};
+  if(status===404 || /model.*(not found|does not exist)/i.test(m)) return {code:"bad_model", message:m};
+  return {code:"upstream_error", message:m};
+}
+async function keyFetch(url, init, signal){
+  let res;
+  try{ res = await fetch(url, {...init, signal}); }
+  catch(e){ throw {code: signal?.aborted ? "cancelled" : "upstream_error", message:String(e?.message||e)}; }
+  const raw = await res.text(); let j = null; try{ j = JSON.parse(raw); }catch{}
+  if(!res.ok) throw keyErr(res.status, j?.error?.message || j?.message || raw.slice(0,300));
+  return j || {};
+}
+const blobToB64 = b => new Promise((ok, ko) => { const f = new FileReader(); f.onload = () => ok(String(f.result).split(",")[1]); f.onerror = ko; f.readAsDataURL(b); });
+function keyMessages(input){
+  const list = typeof input==="string" ? [{role:"user", content:input}] : A(input).map(m=>({role: m.role==="assistant" ? "assistant" : "user", content:S(m.content)}));
+  return list.length ? list : [{role:"user", content:""}];
+}
+async function runTool(t, inp, signal){
+  try{ const out = await t.execute(inp || {}, {signal}); return typeof out==="string" ? out : JSON.stringify(out ?? ""); }
+  catch(e){ return "Error: " + S(e?.message || e); }
+}
+// Gemini con búsqueda de Google no admite herramientas propias a la vez: las tareas se piden como líneas "TAREA:".
+async function tareasDeTexto(text, fnTools, signal){
+  const t = fnTools.find(x=>x.name==="agregar_tarea"); if(!t) return text;
+  const r = extractTasks(text); for(const tx of r.tasks) await runTool(t, {texto:tx}, signal);
+  return r.tasks.length ? r.text : text;
+}
+
+async function callClaude(cfg, msgs, imgs, fnTools, web, opts){
+  const status = opts.__status || (()=>{});
+  const effort = {quick:"low", default:"medium", complex:"high"}[opts.modelTier] || "medium";
+  const messages = msgs.map(m=>({role:m.role, content:m.content}));
+  if(imgs.length){ const last = messages[messages.length-1]; last.content = [...imgs.map(i=>({type:"image", source:{type:"base64", media_type:i.type, data:i.data}})), {type:"text", text:S(last.content)}]; }
+  const tools = fnTools.map(t=>({name:t.name, description:S(t.description), input_schema: t.inputSchema || {type:"object", properties:{}}}));
+  if(web) tools.push({type:"web_search_20260209", name:"web_search", max_uses:5}, {type:"web_fetch_20260209", name:"web_fetch", max_uses:4});
+  const model = cfg.model || KEY_PROVS.claude.models[opts.modelTier||"default"] || "claude-opus-5-5";
+  let text = "";
+  for(let turn = 0; turn < 14; turn++){
+    const body = {model, max_tokens:16000, messages, output_config:{effort}, fallbacks:"default"};
+    if(tools.length) body.tools = tools;
+    const j = await keyFetch("https://api.anthropic.com/v1/messages", {method:"POST", headers:{"content-type":"application/json", "x-api-key":cfg.key, "anthropic-version":"2026-10-21", "anthropic-beta":"server-side-fallback-2026-07-01", "anthropic-dangerous-direct-browser-access":"true"}, body:JSON.stringify(body)}, opts.signal);
+    if(j.stop_reason==="refusal") throw {code:"refused"};
+    const content = A(j.content);
+    content.filter(b=>b.type==="server_tool_use").forEach(b=>status((b.name==="web_fetch" ? "Leyendo: " + S(b.input?.url) : "Buscando en la web: " + S(b.input?.query))));
+    const t = content.filter(b=>b.type==="text").map(b=>b.text).join("");
+    if(t) text = (j.stop_reason==="pause_turn" && text) ? text + t : t;
+    if(j.stop_reason==="tool_use"){
+      messages.push({role:"assistant", content});
+      const calls = content.filter(b=>b.type==="tool_use");
+      const results = await Promise.all(calls.map(async c=>{ const tool = fnTools.find(x=>x.name===c.name); return {type:"tool_result", tool_use_id:c.id, content: tool ? await runTool(tool, c.input, opts.signal) : "Herramienta no disponible", ...(tool ? {} : {is_error:true})}; }));
+      messages.push({role:"user", content:results}); text = ""; continue;
+    }
+    if(j.stop_reason==="pause_turn"){ messages.push({role:"assistant", content}); continue; }
+    return text;
+  }
+  return text;
+}
+
+async function callGemini(cfg, msgs, imgs, fnTools, web, opts, json){
+  const status = opts.__status || (()=>{});
+  const model = cfg.model || KEY_PROVS.gemini.models[opts.modelTier||"default"];
+  const textTasks = web && fnTools.length;
+  const contents = msgs.map(m=>({role: m.role==="assistant" ? "model" : "user", parts:[{text:S(m.content)}]}));
+  const last = contents[contents.length-1];
+  if(textTasks) last.parts[0].text += "\n\nSi la persona pide anotar o agregar tareas, escribe al final una línea por tarea con el formato exacto: TAREA: texto de la tarea.";
+  imgs.forEach(i=>last.parts.push({inline_data:{mime_type:i.type, data:i.data}}));
+  const body = {contents};
+  if(web) body.tools = [{google_search:{}}];
+  else if(fnTools.length) body.tools = [{functionDeclarations: fnTools.map(t=>({name:t.name, description:S(t.description), ...(t.inputSchema ? {parameters:t.inputSchema} : {})}))}];
+  if(json && !web && !fnTools.length) body.generationConfig = {responseMimeType:"application/json"};
+  if(web) status("Buscando en la web con Google…");
+  for(let turn = 0; turn < 10; turn++){
+    const j = await keyFetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {method:"POST", headers:{"content-type":"application/json", "x-goog-api-key":cfg.key}, body:JSON.stringify(body)}, opts.signal);
+    const cand = A(j.candidates)[0];
+    if(!cand){ if(j.promptFeedback?.blockReason) throw {code:"refused"}; throw {code:"empty_completion"}; }
+    const parts = A(cand.content?.parts);
+    const calls = parts.filter(p=>p.functionCall);
+    if(calls.length){
+      contents.push({role:"model", parts});
+      const resp = await Promise.all(calls.map(async p=>{ const tool = fnTools.find(x=>x.name===p.functionCall.name); return {functionResponse:{name:p.functionCall.name, response:{result: tool ? await runTool(tool, p.functionCall.args, opts.signal) : "Herramienta no disponible"}}}; }));
+      contents.push({role:"user", parts:resp}); continue;
+    }
+    const text = parts.filter(p=>typeof p.text==="string" && !p.thought).map(p=>p.text).join("");
+    if(!text && cand.finishReason==="SAFETY") throw {code:"refused"};
+    return textTasks ? tareasDeTexto(text, fnTools, opts.signal) : text;
+  }
+  return "";
+}
+
+async function callOpenAI(cfg, msgs, imgs, fnTools, web, opts){
+  const status = opts.__status || (()=>{});
+  const model = cfg.model || KEY_PROVS.openai.models[opts.modelTier||"default"];
+  const input = msgs.map(m=>({role:m.role, content:S(m.content)}));
+  if(imgs.length){ const last = input[input.length-1]; last.content = [{type:"input_text", text:S(last.content)}, ...imgs.map(i=>({type:"input_image", image_url:`data:${i.type};base64,${i.data}`}))]; }
+  const tools = fnTools.map(t=>({type:"function", name:t.name, description:S(t.description), parameters: t.inputSchema || {type:"object", properties:{}}}));
+  if(web) tools.push({type:"web_search"});
+  for(let turn = 0; turn < 12; turn++){
+    const body = {model, input}; if(tools.length) body.tools = tools;
+    const j = await keyFetch("https://api.openai.com/v1/responses", {method:"POST", headers:{"content-type":"application/json", "authorization":"Bearer " + cfg.key}, body:JSON.stringify(body)}, opts.signal);
+    const out = A(j.output);
+    out.filter(o=>o.type==="web_search_call").forEach(o=>status("Buscando en la web: " + S(o.action?.query, "…")));
+    const calls = out.filter(o=>o.type==="function_call");
+    if(calls.length){
+      input.push(...out);
+      for(const c of calls){ const tool = fnTools.find(x=>x.name===c.name); let args = {}; try{ args = JSON.parse(c.arguments || "{}"); }catch{} input.push({type:"function_call_output", call_id:c.call_id, output: tool ? await runTool(tool, args, opts.signal) : "Herramienta no disponible"}); }
+      continue;
+    }
+    const text = out.filter(o=>o.type==="message").flatMap(o=>A(o.content)).filter(c=>c.type==="output_text").map(c=>c.text).join("");
+    if(!text && out.some(o=>o.type==="refusal" || A(o.content).some(c=>c.type==="refusal"))) throw {code:"refused"};
+    return text;
+  }
+  return "";
+}
+
+function makeKeySample(cfg){
+  const call = async (input, opts={}, json=false) => {
+    const all = A(opts.tools);
+    const web = all.some(t=>t.name==="buscar_web" || t.name==="leer_pagina");
+    const fnTools = all.filter(t=>t.name!=="buscar_web" && t.name!=="leer_pagina");
+    const imgs = [];
+    for(const b of A(opts.images)){ try{ imgs.push({type:b.type || "image/jpeg", data: await blobToB64(b)}); }catch{} }
+    const msgs = keyMessages(input);
+    const fn = cfg.prov==="gemini" ? callGemini : cfg.prov==="openai" ? callOpenAI : callClaude;
+    const text = await fn(cfg, msgs, imgs, fnTools, web, opts, json);
+    if(!S(text).trim()) throw {code:"empty_completion"};
+    opts.onText?.({text, delta:""});
+    return {text, truncated:false};
+  };
+  const fn = (input, opts) => call(input, opts);
+  fn.json = async (input, opts={}) => {
+    const add = "\n\nIMPORTANTE: responde únicamente con el JSON pedido, sin texto antes ni después.";
+    const inp = typeof input==="string" ? input + add : A(input).map((m,k,a)=>k===a.length-1 ? {...m, content:S(m.content)+add} : m);
+    const r = await call(inp, opts, true); return parseLooseJSON(r.text);
+  };
+  fn.limits = async () => ({maxPromptBytes:524288, tools:{maxCount:8}, images:true});
+  return fn;
+}
+
+function keyConnect(cfg, quiet){
+  sample = makeKeySample(cfg); KEY_MODE = cfg; toolsOk = true; webOk = true; imagesOk = true;
+  const P = KEY_PROVS[cfg.prov];
+  setPill("pillAI","ok","IA: " + P.corto + " conectado");
+  setPill("pillSync","ok","Datos: guardados en este navegador");
+  $("#offline").hidden = true; $("#iaBtn").hidden = false; $("#iaBtn").textContent = "🤖 " + P.corto;
+  renderWebPill(); rmCaps();
+  if(!quiet) toast("Listo: " + P.n + " conectado. Ya puedes usar todo el panel.");
+}
+function toast(msg){
+  let t = document.getElementById("acToast");
+  if(!t){ t = document.createElement("div"); t.id = "acToast"; t.style.cssText = "position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--panel);border:1px solid var(--amber);color:var(--fg);padding:12px 18px;border-radius:12px;z-index:200;font-size:14px;max-width:90vw;box-shadow:0 8px 30px rgba(0,0,0,.4)"; document.body.appendChild(t); }
+  t.textContent = msg; t.hidden = false; clearTimeout(t._h); t._h = setTimeout(()=>{ t.hidden = true; }, 4500);
+}
+function iaPaint(){
+  const p = $("#iaProv").value, P = KEY_PROVS[p];
+  $("#iaNota").innerHTML = `${esc(P.nota)} <a href="${P.url}" target="_blank" rel="noopener">Sacar mi clave de ${esc(P.corto)} ↗</a>`;
+  $("#iaModel").placeholder = "Opcional. Por defecto: " + P.models.default;
+}
+function iaOpen(){
+  const c = keyCfg() || {prov:"gemini", key:"", model:""};
+  $("#iaProv").value = c.prov; $("#iaKey").value = c.key || ""; $("#iaModel").value = c.model || ""; $("#iaMsg").textContent = "";
+  $("#iaOff").hidden = !keyCfg(); iaPaint(); $("#iaDlg").showModal();
+}
+async function iaSave(){
+  const cfg = {prov:$("#iaProv").value, key:$("#iaKey").value.trim(), model:$("#iaModel").value.trim()};
+  if(cfg.key.length < 12){ $("#iaMsg").textContent = "Pega tu clave completa."; return; }
+  $("#iaMsg").textContent = "Probando la conexión…"; $("#iaSave").disabled = true;
+  try{
+    const r = await makeKeySample(cfg)("Responde solo con la palabra: listo", {modelTier:"quick"});
+    if(!/listo/i.test(r.text)) throw {code:"empty_completion"};
+    store.set("ac.ia", cfg); $("#iaDlg").close(); keyConnect(cfg);
+  }catch(e){ $("#iaMsg").textContent = aiErr(e) + (e?.message ? " (" + S(e.message).slice(0,160) + ")" : ""); }
+  finally{ $("#iaSave").disabled = false; }
+}
+
 function aiErr(e){
   switch(e?.code){
-    case "no_ai": return "La IA responde cuando abres el panel desde su enlace de Claude con tu sesión iniciada.";
-    case "rate_limited": return "Llegaste al límite de uso de tu cuenta de Claude por ahora. Espera un momento o usa el modo Rápido.";
+    case "no_ai": return "Conecta tu IA (Gemini, ChatGPT o Claude) con el botón “Conectar mi IA”, o abre el panel en la app de Claude.";
+    case "bad_key": return "La clave de la IA no es válida o no tiene permiso. Revísala en “Conectar mi IA”.";
+    case "bad_model": return "Ese modelo no existe para tu clave. Borra el campo “Modelo” en “Conectar mi IA” para usar el de siempre.";
+    case "rate_limited": return KEY_MODE ? "Tu clave llegó al límite de uso o no tiene saldo por ahora. Espera un momento o revisa tu cuenta de " + KEY_PROVS[KEY_MODE.prov].corto + "." : "Llegaste al límite de uso de tu cuenta de Claude por ahora. Espera un momento o usa el modo Rápido.";
     case "not_granted": return "No se dio permiso a la IA. Actívalo desde el menú de permisos de esta página.";
     case "session_expired": return "Tu sesión de Claude expiró. Vuelve a iniciar sesión.";
-    case "refused": return "Claude no pudo responder a esta petición. Cambia un poco lo que pides.";
+    case "refused": return "La IA no pudo responder a esta petición. Cambia un poco lo que pides.";
     case "prompt_too_large": return "La petición es demasiado larga. Recorta el texto o pide menos a la vez.";
     case "empty_completion": return "No llegó respuesta. Intenta de nuevo con una petición más simple.";
     default: return "No se pudo obtener respuesta. Revisa tu conexión e inténtalo de nuevo.";
@@ -2378,7 +2594,7 @@ $("#rmForm").addEventListener("submit", async e=>{
   try{
     const opts = {modelTier:tierUse, signal:ctrl.signal};
     if(i.web) opts.tools = webTools(rmLogLine); else opts.cache = false;
-    if(IS_LOCAL) opts.__status = rmLogLine;
+    if(IS_LOCAL || KEY_MODE) opts.__status = rmLogLine;
     if(i.foto) opts.images = [file];
     const r = await sample.json(rmMainPrompt(i), opts);
     if(!r || typeof r!=="object" || !r.producto) throw {code:"invalid_json"};
@@ -2417,7 +2633,7 @@ async function rmGenerarSeguro(i, file){
   try{
     const opts = {modelTier:tierUse, signal:ctrl.signal};
     if(i.web) opts.tools = webTools(rmLogLine); else opts.cache = false;
-    if(IS_LOCAL) opts.__status = rmLogLine;
+    if(IS_LOCAL || KEY_MODE) opts.__status = rmLogLine;
     if(i.foto) opts.images = [file];
     const r = await sample.json(rmMainPromptSeguro(i), opts);
     if(!r || typeof r!=="object" || !A(r.dialogo).length) throw {code:"invalid_json"};
@@ -2499,7 +2715,11 @@ initDb();
     return;
   }
   try{ sample = await window.claude?.use?.("sample"); }catch{ sample = null; }
-  if(!sample){ setPill("pillAI","bad","IA: abre el panel en Claude"); $("#offline").hidden = false; renderWebPill(); return; }
+  if(!sample){
+    $("#iaBtn").hidden = false;
+    const c = keyCfg(); if(c && c.key){ keyConnect(c, true); return; }
+    setPill("pillAI","bad","IA: conecta tu IA"); $("#offline").hidden = false; renderWebPill(); return;
+  }
   setPill("pillAI","ok","IA: Claude conectado");
   const lim = await sample.limits().catch(()=>null);
   toolsOk = !!lim?.tools; imagesOk = !!lim?.images;
