@@ -517,9 +517,9 @@ body.locked .app{visibility:hidden}
         <div class="st-body">
           <form class="st-form" id="rmForm" aria-label="Datos del producto">
             <label for="rmNombre">Producto (nombre comercial)<input id="rmNombre" name="nombre" value="" placeholder="Ej.: nombre del producto en Dropi" required></label>
-            <label for="rmHace">Qué hace y qué NO hace (la verdad del producto)<textarea id="rmHace" name="hace" required>Proyector LED compacto, proyecta hasta 120 pulgadas, trae Android con YouTube y Netflix, se conecta por WiFi y HDMI, gira 180 grados. No tiene batería: funciona conectado a la corriente. Brillo bajo de día, ideal de noche.</textarea></label>
+            <label for="rmHace">Qué hace y qué NO hace (la verdad del producto)<textarea id="rmHace" name="hace" required placeholder="Qué hace, qué trae y qué NO hace (para no prometer de más)"></textarea></label>
             <div class="st-row">
-              <label for="rmCosto">Precio proveedor (Dropi)<input id="rmCosto" name="costo" type="number" min="0" step="any" value="98000" required></label>
+              <label for="rmCosto">Precio proveedor (Dropi)<input id="rmCosto" name="costo" type="number" min="0" step="any" value="" placeholder="Ej.: 14000" required></label>
               <label for="rmPrecio">Precio de venta (vacío = te lo sugiero)<input id="rmPrecio" name="precio" type="number" min="0" step="any" value=""></label>
             </div>
             <div class="st-row">
@@ -527,7 +527,7 @@ body.locked .app{visibility:hidden}
               <label for="rmDevol">Devoluciones %<input id="rmDevol" name="devol" type="number" min="0" max="95" step="any" value="20"></label>
               <label for="rmPais">País<select id="rmPais" name="pais"></select></label>
             </div>
-            <label for="rmTemp">Temporada u ocasión (opcional)<input id="rmTemp" name="temporada" value="Navidad y regalos de fin de año"></label>
+            <label for="rmTemp">Temporada u ocasión (opcional)<input id="rmTemp" name="temporada" value="" placeholder="Ej.: Navidad, Día de la Madre…"></label>
             <label for="rmModo">Tipo de producto (cómo armo los prompts)<select id="rmModo" name="modo">
               <option value="auto" selected>Automático: si es natural, de salud o medicinal uso el modo seguro</option>
               <option value="normal">Normal: 3 variaciones por nivel de conciencia</option>
@@ -2796,7 +2796,9 @@ $("#rmForm").addEventListener("submit", async e=>{
   if(!sample){ rmSteps([aiErr({code:"no_ai"})]); rmStep(0,"bad"); return; }
   const fd = new FormData(e.currentTarget);
   const file = $("#rmFoto").files?.[0] || null;
-  const i = {nombre:S(fd.get("nombre")).trim(), hace:S(fd.get("hace")).trim(), costo:+fd.get("costo")||0, precio:+fd.get("precio")||0,
+  // Regla de Andrés: si no pone precio, se vende a costo + $75.000 terminado en 900 (14.000 → 89.900).
+  const reglaPrecio = c => c > 0 ? Math.floor((c + 75000) / 1000) * 1000 + 900 : 0;
+  const i = {nombre:S(fd.get("nombre")).trim(), hace:S(fd.get("hace")).trim(), costo:+fd.get("costo")||0, precio:+fd.get("precio")||reglaPrecio(+fd.get("costo")||0),
     flete:+fd.get("flete")||0, devol:+fd.get("devol")||0, pais:S(fd.get("pais"),"Colombia"), temporada:S(fd.get("temporada")).trim(),
     ganador:S(fd.get("ganador")).trim(), competidores:S(fd.get("competidores")).trim(), foto: !!(file && imagesOk),
     cierre: S(fd.get("cierre"),"whatsapp"), modoSel: S(fd.get("modo"),"auto"),
