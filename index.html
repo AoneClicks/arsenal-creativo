@@ -1189,6 +1189,10 @@ async function callGemini1(cfg, model, msgs, imgs, fnTools, web, opts, json, rac
     const cand = A(j.candidates)[0];
     if(!cand){ if(j.promptFeedback?.blockReason) throw {code:"refused"}; throw {code:"empty_completion"}; }
     const parts = A(cand.content?.parts);
+    if(race && turn===0 && (parts.some(p=>p.functionCall) || parts.some(p=>typeof p.text==="string" && p.text && !p.thought))){
+      if(race.winner && race.winner!==me) throw {code:"lost_race"};
+      if(!race.winner){ race.winner = me; status("Respondiendo con " + model); }
+    }
     const calls = parts.filter(p=>p.functionCall);
     if(calls.length){
       contents.push({role:"model", parts});
