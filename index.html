@@ -1803,6 +1803,41 @@ Responde SOLO con JSON:
 Pases de referencia: 1 · Texto, 2 · Marcas, 3 · Sugerente, 4 · Violencia, 5 · Cuerpo, 6 · Menores, 7 · Personas reales, 8 · Audio, 9 · Producto.`;
 }
 
+/* ================= 4 modelos de anuncios de imagen (formatos virales) ================= */
+const IMG_MODELOS = [
+  {id:"M1", modelo:"El resultado que detiene el scroll", idea:"La escena más impactante del producto funcionando, como el mejor frame del video ganador. Emoción y deseo en un segundo."},
+  {id:"M2", modelo:"Problema → solución (sin vs. con)", idea:"Imagen dividida: a un lado la molestia de siempre, al otro la vida con el producto. Se entiende sin leer."},
+  {id:"M3", modelo:"Producto protagonista + beneficios", idea:"Foto de catálogo premium: el producto grande y nítido, con espacio para 3 o 4 beneficios con íconos alrededor."},
+  {id:"M4", modelo:"Cliente real (estilo UGC) + oferta", idea:"Foto tipo celular en una casa colombiana real: la mano del cliente con el producto recién llegado, con reseña y oferta encima."},
+];
+function rmImgPrompt(i, r){
+  const seguro = r.modo==="seguro", p = r.producto || {};
+  return `Eres director de arte de anuncios de imagen para Meta e Instagram que venden con pago contraentrega en ${i.pais}. Diseña 4 anuncios de imagen estáticos, súper profesionales y con la creatividad de los anuncios virales del nicho, para este producto.
+PRODUCTO: ${i.nombre}. Verdad del producto: ${i.hace}. Se ve como: ${S(p.subject_en)}.
+Precio: ${money(r.__precio)}${r.mercado?.razon_precio ? ". " + S(r.mercado.razon_precio) : ""}. Cierre por ${S(i.cierre,"whatsapp")==="web" ? "formulario web" : "WhatsApp"}.
+Lo que funciona del ganador: ${S(r.ganador?.por_que)}. Ganchos de los videos: ${A(r.ganchos).map(g=>S(g.dice)).filter(Boolean).slice(0,5).join(" | ")}.
+${seguro ? "PRODUCTO NATURAL O DE SALUD: nada de antes y después del cuerpo, nada de personas enfermas, médicos o batas, nada de promesas de cura en los textos (usa 'ayuda a', 'apoya', 'rutina de cuidado'). El problema se muestra con la situación (de noche sin poder dormir, en el trancón, en la mesa familiar), nunca con el cuerpo." : ""}
+Los 4 modelos son fijos, en este orden:
+${IMG_MODELOS.map(m=>`${m.id} · ${m.modelo}: ${m.idea}`).join("\n")}
+La imagen se genera en Google Flow SIN TEXTO; el texto se pone después en Canva o CapCut, dentro de la zona segura, por eso deja espacio limpio donde va el titular.
+Responde SOLO con JSON:
+{"modelos":[{"id":"M1","modelo":"El resultado que detiene el scroll","por_que":"por qué este formato vende este producto","estilo_en":"photo style lock in English (e.g. high-end commercial advertising photo, cinematic, true to life color)","persona_en":"si sale una persona, descripción física en inglés (adulto, ropa lisa); vacío si no sale","action_en":"what is seen, in English, with {PRODUCTO} where the exact product goes","environment_en":"Colombian setting in English","lighting_en":"","camera_en":"","espacio_en":"where to leave clean empty space for the headline (e.g. upper third)","titular":"MÁX 6 PALABRAS EN MAYÚSCULAS","subtitulo":"una línea corta","sello":"texto del sello o badge (ej. PAGAS AL RECIBIR)","cta":"botón dibujado (ej. PÍDELO POR WHATSAPP)","diseno":"cómo montarlo en Canva: posición de cada texto, tipografía, colores de la marca, íconos o flechas","titulo":"título del anuncio en Meta, máx 40 caracteres, enganchable","descripcion":"máx 30 caracteres","texto_principal":"texto principal corto con emojis moderados y oferta"}]}
+Reglas: exactamente 4 modelos. Escenas, casas y gente típicas de ${i.pais}, modernas. El producto solo hace lo que de verdad hace. Nunca texto, logos ni marcas de agua dentro de la imagen. Urgencia creíble ("Promo de temporada", "Hasta agotar existencias"), nunca "solo por hoy". En M2 la división puede ser en diagonal o vertical, con la misma persona o lugar en los dos lados. En M4 la foto parece hecha con celular (luz natural, un poco imperfecta) pero el producto se ve perfecto.`;
+}
+function rmPromptModelo(m, r){
+  const p = r.producto || {}, per = !!S(m.persona_en);
+  return `[STYLE LOCK]: ${S(m.estilo_en, "High-end commercial advertising photo for a social ad, scroll-stopping, true to life color, crisp detail, professional retouching")}
+[SUBJECT]: ${per ? S(m.persona_en) + "; " : ""}${fillProduct("{PRODUCTO}", p)}
+[ACTION]: ${fillProduct(S(m.action_en), p)}
+[ENVIRONMENT]: ${S(m.environment_en)}
+[LIGHTING]: ${S(m.lighting_en, "soft natural light with gentle contrast")}
+[CAMERA]: ${S(m.camera_en, "eye-level medium shot, shallow depth of field")}; leave clean empty space in the ${S(m.espacio_en, "upper third")} for a headline
+[ASPECT]: 4:5 vertical
+[REFERENCE]: P0${per ? " for the product" : ""}
+[PRODUCT]: ${S(p.lock_en)}
+[EXCLUDE]: ${per ? EXCL_P : EXCL}`;
+}
+
 function rmMetaPrompt(i, r){
   const nums = rmNumbers(r), vs = A(r.variaciones);
   const wa = S(i.cierre,"whatsapp") !== "web";
@@ -1984,7 +2019,7 @@ function rmBody(r){
   const pb = (title, att, text) => { n++; return `<div class="pb"><div class="ph"><b>${esc(title)}</b><button class="cp" data-t="t${n}">Copiar</button></div>${att ? `<div class="att">${att}</div>` : ""}<pre id="t${n}">${esc(text)}</pre></div>`; };
   const table = (heads, rows) => `<div class="tw"><table><thead><tr>${heads.map(x=>`<th>${esc(x)}</th>`).join("")}</tr></thead><tbody>${rows.map(rw=>`<tr>${rw.map(c=>`<td>${esc(S(c))}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
   const att = (lbl, v) => `<span>${lbl}:</span> ${esc(v)}`;
-  const tabs = [["inicio","Inicio"], ...(r.meta ? [["meta","📣 Cómo pautar en Meta"]] : []), ["mercado","Mercado y números"], ...vs.map((v,k)=>["v"+(k+1), `${S(v.id,"V"+(k+1))} · ${S(v.nombre)}`]), ["ganchos","Ganchos"]];
+  const tabs = [["inicio","Inicio"], ...(r.meta ? [["meta","📣 Cómo pautar en Meta"]] : []), ...(A(r.imagenes_ad).length ? [["imagenes","🖼️ Anuncios de imagen"]] : []), ["mercado","Mercado y números"], ...vs.map((v,k)=>["v"+(k+1), `${S(v.id,"V"+(k+1))} · ${S(v.nombre)}`]), ["ganchos","Ganchos"]];
 
   let inicio = "";
   if(r.meta){ const rc = r.meta.recomendacion || {}; inicio += `<div class="card hero"><div class="big" style="font-size:1.6rem">📣</div><div><b>Cómo pautarlo en Meta:</b> objetivo <b>${esc(S(rc.objetivo))}</b>${rc.ubicacion ? ` · ${esc(S(rc.ubicacion))}` : ""}${rc.rendimiento ? ` · ${esc(S(rc.rendimiento))}` : ""}.<br>Todo campo por campo, con títulos y descripciones listos para copiar, en la pestaña <b>📣 Cómo pautar en Meta</b> de arriba.</div></div>`; }
@@ -2074,7 +2109,7 @@ function rmBody(r){
       });
     }
     if(A(mt.imagenes).length){
-      meta += `<h3>Anuncios de imagen</h3><div class="card">Pon <b>1 anuncio de imagen en cada conjunto</b>, junto al video (mismo conjunto, mismo botón de WhatsApp). Así Meta tiene más opciones para encontrar compradores: a mucha gente le vende la foto y a otra el video. Genera la imagen en Flow con P0 adjunta y pon el texto encima en Canva o CapCut, dentro de la zona segura (centro, lejos de los bordes).</div>`;
+      meta += `<h3>Anuncios de imagen</h3><div class="card">${A(r.imagenes_ad).length ? "Tienes 4 modelos más, completos, en la pestaña <b>🖼️ Anuncios de imagen</b>. " : ""}Pon <b>1 anuncio de imagen en cada conjunto</b>, junto al video (mismo conjunto, mismo botón de WhatsApp). Así Meta tiene más opciones para encontrar compradores: a mucha gente le vende la foto y a otra el video. Genera la imagen en Flow con P0 adjunta y pon el texto encima en Canva o CapCut, dentro de la zona segura (centro, lejos de los bordes).</div>`;
       A(mt.imagenes).forEach((m,k)=>{
         const id = S(m.id, "IMG"+(k+1));
         meta += `<div class="card"><b>${esc(id)} · ${esc(S(m.nombre))}</b><br>${esc(S(m.concepto))}<br><b>Texto encima:</b> ${esc(S(m.texto_encima))}${m.texto_secundario ? ` · <small>${esc(S(m.texto_secundario))}</small>` : ""}</div>`;
@@ -2099,6 +2134,20 @@ function rmBody(r){
     if(A(mt.errores).length) meta += `<h3>Errores que te quitan ventas</h3><ol class="steps">${A(mt.errores).map(x=>`<li>${esc(S(x))}</li>`).join("")}</ol>`;
   }
 
+  let imgs = "";
+  if(A(r.imagenes_ad).length){
+    imgs = `<h2>4 anuncios de imagen</h2><div class="card">Cuatro formatos de los anuncios de imagen que más venden en Meta, adaptados a este producto. Ponlos <b>en los mismos conjuntos que los videos</b>: Meta reparte entre video e imagen y encuentra más compradores.<br><b>Cómo hacerlos:</b> 1) genera la imagen en Flow con <b>P0</b> adjunta (sale sin texto); 2) en Canva o CapCut ponle el titular, el sello y el botón como dice "Diseño", siempre en la zona segura (centro, lejos de los bordes); 3) exporta en 4:5 (1080 × 1350) para Feed y, si quieres Stories, cambia [ASPECT] a 9:16 y deja más espacio arriba y abajo.</div>`;
+    imgs += table(["Modelo","Formato","Por qué vende este producto"], A(r.imagenes_ad).map(m=>[S(m.id), S(m.modelo), S(m.por_que)]));
+    A(r.imagenes_ad).forEach(m=>{
+      const id = S(m.id);
+      imgs += `<h3>${esc(id)} · ${esc(S(m.modelo))}</h3>`;
+      imgs += pb(`${id} · imagen (Flow)`, att("Adjuntar", S(m.persona_en) ? "P0 (y A1 de una variación si quieres la misma persona)" : "P0"), rmPromptModelo(m, r));
+      imgs += table(["Texto encima","Qué poner"], [["Titular", m.titular], ["Subtítulo", m.subtitulo], ["Sello", m.sello], ["Botón", m.cta], ["Diseño en Canva", m.diseno]]);
+      imgs += pb(`${id} · Título del anuncio`, "", S(m.titulo));
+      imgs += pb(`${id} · Descripción`, "", S(m.descripcion));
+      imgs += pb(`${id} · Texto principal`, "", S(m.texto_principal));
+    });
+  }
   if(r.modo==="seguro"){
     const P = r.producto || {}, D = A(r.dialogo), STY = S(r.estilo_en, SEG_STYLE), V = A(r.variaciones);
     const seg = d => (S(d.seguro)==="igual" || !S(d.seguro)) ? S(d.original) : S(d.seguro);
@@ -2193,8 +2242,8 @@ ${prodLines}
     if(A(au.referencias).length) aud += `<h3>Referencias a revisar antes de adjuntar</h3><ol class="steps">${A(au.referencias).map(x=>`<li>${esc(S(x))}</li>`).join("")}</ol>`;
 
     const gan = A(r.ganchos).length ? `<h2>Banco de ganchos</h2><p>Cada uno reemplaza los primeros 3 segundos de una variación, con lenguaje seguro.</p>` + table(["#","Qué se ve","Qué se dice","Nivel","Va con"], A(r.ganchos).map((x,k)=>["G"+(k+1), x.ve, x.dice, x.nivel, x.va_con])) : "";
-    const tb = [["intro","Diálogo y ruta"], ...(r.meta ? [["meta","📣 Cómo pautar en Meta"]] : []), ["mercado","Mercado y números"], ...V.map((v,k)=>["v"+(k+1), `${S(v.id,"V"+(k+1))} · ${S(v.corto, v.nombre)}`]), ["audit","Auditoría"], ...(gan ? [["ganchos","Ganchos"]] : [])];
-    const sc = [["intro",intro], ...(r.meta ? [["meta",meta]] : []), ["mercado",merc], ...vTabs.map((x,k)=>["v"+(k+1), x]), ["audit",aud], ...(gan ? [["ganchos",gan]] : [])];
+    const tb = [["intro","Diálogo y ruta"], ...(r.meta ? [["meta","📣 Cómo pautar en Meta"]] : []), ...(A(r.imagenes_ad).length ? [["imagenes","🖼️ Anuncios de imagen"]] : []), ["mercado","Mercado y números"], ...V.map((v,k)=>["v"+(k+1), `${S(v.id,"V"+(k+1))} · ${S(v.corto, v.nombre)}`]), ["audit","Auditoría"], ...(gan ? [["ganchos","Ganchos"]] : [])];
+    const sc = [["intro",intro], ...(r.meta ? [["meta",meta]] : []), ...(A(r.imagenes_ad).length ? [["imagenes",imgs]] : []), ["mercado",merc], ...vTabs.map((x,k)=>["v"+(k+1), x]), ["audit",aud], ...(gan ? [["ganchos",gan]] : [])];
     return `<div class="rm td"><header><h1>${esc(S(r.titulo, r.__input?.nombre || "Hoja de ruta"))}</h1><p>${esc(S(r.subtitulo))}</p>
 <nav class="tabs">${tb.map(([k,l],j)=>`<button data-k="${k}" class="${j===0?"on":""}">${esc(l)}</button>`).join("")}</nav></header>
 <main>${sc.map(([k,x],j)=>`<section class="tab${j===0?" on":""}" id="${k}">${x}</section>`).join("")}</main></div>`;
@@ -2224,7 +2273,7 @@ ${prodLines}
 <nav class="tabs">${tb.map(([k,l],j)=>`<button data-k="${k}" class="${j===0?"on":""}">${esc(l)}</button>`).join("")}</nav></header>
 <main>${sc.map(([k,x],j)=>`<section class="tab${j===0?" on":""}" id="${k}">${x}</section>`).join("")}</main></div>`;
   }
-  const sections = [["inicio",inicio], ...(r.meta ? [["meta",meta]] : []), ["mercado",merc], ...varTabs.map((s,k)=>["v"+(k+1), s]), ["ganchos",ganchos]];
+  const sections = [["inicio",inicio], ...(r.meta ? [["meta",meta]] : []), ...(A(r.imagenes_ad).length ? [["imagenes",imgs]] : []), ["mercado",merc], ...varTabs.map((s,k)=>["v"+(k+1), s]), ["ganchos",ganchos]];
   return `<div class="rm"><header><h1>${esc(S(r.titulo, r.__input?.nombre || "Hoja de ruta"))}</h1><p>${esc(S(r.subtitulo))}</p>
 <nav class="tabs">${tabs.map(([k,l],j)=>`<button data-k="${k}" class="${j===0?"on":""}">${esc(l)}</button>`).join("")}</nav></header>
 <main>${sections.map(([k,s],j)=>`<section class="tab${j===0?" on":""}" id="${k}">${s}</section>`).join("")}</main></div>`;
@@ -2310,7 +2359,7 @@ $("#rmForm").addEventListener("submit", async e=>{
   $("#rmGen").disabled = true; $("#rmGen").textContent = "Generando…"; $("#rmStop").hidden = false; rmLog.textContent = "";
   i.modo = i.modoSel==="seguro" || (i.modoSel==="auto" && rmIsSensible(i)) ? "seguro" : "normal";
   if(i.modo==="seguro") return rmGenerarSeguro(i, file);
-  rmSteps([i.web ? "Investigando mercado y competencia en la web" : "Analizando mercado (sin web)", "Variación 1 · muy consciente", "Variación 2 · medianamente consciente", "Variación 3 · no consciente", "Configuración de Meta Ads y textos", "Armando la hoja de ruta"]);
+  rmSteps([i.web ? "Investigando mercado y competencia en la web" : "Analizando mercado (sin web)", "Variación 1 · muy consciente", "Variación 2 · medianamente consciente", "Variación 3 · no consciente", "Meta Ads, textos y 4 anuncios de imagen", "Armando la hoja de ruta"]);
   rmStep(0,"run");
   try{
     const opts = {modelTier:tierUse, signal:ctrl.signal};
@@ -2324,10 +2373,13 @@ $("#rmForm").addEventListener("submit", async e=>{
     const vs = A(r.variaciones).slice(0,3);
     vs.forEach((_,k)=>rmStep(k+1,"run")); rmStep(4,"run");
     r.variaciones = vs;
+    const imgJob = sample.json(rmImgPrompt(i, r), {modelTier:tierUse, signal:ctrl.signal, cache:false})
+      .then(d=>{ if(d && A(d.modelos).length){ r.imagenes_ad = A(d.modelos).slice(0,4); rmLogLine("4 anuncios de imagen listos"); } })
+      .catch(err=>{ if(err?.code==="cancelled") throw err; rmLogLine(`Anuncios de imagen: ${aiErr(err)}`); });
     const metaJob = sample.json(rmMetaPrompt(i, r), {modelTier:tierUse, signal:ctrl.signal, cache:false})
       .then(d=>{ if(d && typeof d==="object" && (d.recomendacion || d.campana)){ r.meta = d; rmStep(4,"ok"); } else rmStep(4,"bad"); })
       .catch(err=>{ if(err?.code==="cancelled") throw err; rmStep(4,"bad"); rmLogLine(`Meta Ads: ${aiErr(err)}`); });
-    await Promise.all([metaJob, ...vs.map((v,k)=>sample.json(rmVarPrompt(i, r, v), {modelTier:tierUse, signal:ctrl.signal, cache:false})
+    await Promise.all([metaJob, imgJob, ...vs.map((v,k)=>sample.json(rmVarPrompt(i, r, v), {modelTier:tierUse, signal:ctrl.signal, cache:false})
       .then(d=>{ if(d && typeof d==="object"){ v.__det = d; rmStep(k+1,"ok"); } else rmStep(k+1,"bad"); })
       .catch(err=>{ if(err?.code==="cancelled") throw err; rmStep(k+1,"bad"); rmLogLine(`${S(v.id)}: ${aiErr(err)}`); }))]);
     rmStep(5,"run");
@@ -2346,7 +2398,7 @@ async function rmGenerarSeguro(i, file){
   const ctrl = rmCtrl = new AbortController();
   const tierUse = tier==="quick" ? "default" : tier;
   $("#rmGen").disabled = true; $("#rmGen").textContent = "Generando…"; $("#rmStop").hidden = false; rmLog.textContent = "";
-  rmSteps(["Modo seguro (producto natural o de salud): " + (i.web ? "investigando mercado y competencia" : "analizando mercado sin web") + " y escribiendo el diálogo seguro", "Variación 1 · escena", "Variación 2 · escena", "Variación 3 · escena", "Configuración de Meta Ads con lenguaje seguro", "Auditoría de Flow y Meta", "Armando la hoja de ruta"]);
+  rmSteps(["Modo seguro (producto natural o de salud): " + (i.web ? "investigando mercado y competencia" : "analizando mercado sin web") + " y escribiendo el diálogo seguro", "Variación 1 · escena", "Variación 2 · escena", "Variación 3 · escena", "Meta Ads y 4 anuncios de imagen con lenguaje seguro", "Auditoría de Flow y Meta", "Armando la hoja de ruta"]);
   rmStep(0,"run");
   try{
     const opts = {modelTier:tierUse, signal:ctrl.signal};
@@ -2359,10 +2411,13 @@ async function rmGenerarSeguro(i, file){
     rmStep(0,"ok"); rmLogLine(`Diálogo de ${A(r.dialogo).length} frases · potencial ${Math.round(+r.mercado?.potencial_pct||0)}%`);
     const vs = A(r.variaciones).slice(0,3); r.variaciones = vs;
     vs.forEach((_,k)=>rmStep(k+1,"run")); rmStep(4,"run");
+    const imgJob = sample.json(rmImgPrompt(i, r), {modelTier:tierUse, signal:ctrl.signal, cache:false})
+      .then(d=>{ if(d && A(d.modelos).length){ r.imagenes_ad = A(d.modelos).slice(0,4); rmLogLine("4 anuncios de imagen listos"); } })
+      .catch(err=>{ if(err?.code==="cancelled") throw err; rmLogLine(`Anuncios de imagen: ${aiErr(err)}`); });
     const metaJob = sample.json(rmMetaPrompt(i, r), {modelTier:tierUse, signal:ctrl.signal, cache:false})
       .then(d=>{ if(d && typeof d==="object" && (d.recomendacion || d.campana)){ r.meta = d; rmStep(4,"ok"); } else rmStep(4,"bad"); })
       .catch(err=>{ if(err?.code==="cancelled") throw err; rmStep(4,"bad"); rmLogLine(`Meta Ads: ${aiErr(err)}`); });
-    await Promise.all([metaJob, ...vs.map((v,k)=>sample.json(rmVarPromptSeguro(i, r, v), {modelTier:tierUse, signal:ctrl.signal, cache:false})
+    await Promise.all([metaJob, imgJob, ...vs.map((v,k)=>sample.json(rmVarPromptSeguro(i, r, v), {modelTier:tierUse, signal:ctrl.signal, cache:false})
       .then(d=>{ if(d && typeof d==="object" && A(d.tomas).length){ v.__det = d; rmStep(k+1,"ok"); } else rmStep(k+1,"bad"); })
       .catch(err=>{ if(err?.code==="cancelled") throw err; rmStep(k+1,"bad"); rmLogLine(`${S(v.id)}: ${aiErr(err)}`); }))]);
     rmStep(5,"run");
