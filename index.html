@@ -1119,10 +1119,12 @@ async function callGemini1(cfg, msgs, imgs, fnTools, web, opts, json, force){
   if(web) body.tools = [{google_search:{}}];
   else if(fnTools.length) body.tools = [{functionDeclarations: fnTools.map(t=>({name:t.name, description:S(t.description), ...(t.inputSchema ? {parameters:t.inputSchema} : {})}))}];
   if(json && !web && !fnTools.length) body.generationConfig = {responseMimeType:"application/json"};
-  if(web) status("Buscando en la web con Google…");
+  status("Usando " + model + (web ? " · buscando en la web con Google…" : ""));
+  let shown = "";
   for(let turn = 0; turn < 10; turn++){
     const auth = geminiAuth(cfg);
-    const j = await keyFetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {method:"POST", headers:{"content-type":"application/json", ...auth}, body:JSON.stringify(body)}, opts.signal);
+    const j = await gemStream(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`, {method:"POST", headers:{"content-type":"application/json", ...auth}, body:JSON.stringify(body)}, opts.signal,
+      t => { if(!textTasks && opts.onText){ shown = t; opts.onText({text:t, delta:""}); } });
     const cand = A(j.candidates)[0];
     if(!cand){ if(j.promptFeedback?.blockReason) throw {code:"refused"}; throw {code:"empty_completion"}; }
     const parts = A(cand.content?.parts);
