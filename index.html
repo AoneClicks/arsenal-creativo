@@ -1703,7 +1703,7 @@ function radarCardHTML(x, isNew){
   return `<article class="pcard" data-rid="${esc(x.id)}">
     <div class="pcard-h"><b>${esc(S(x.nombre))}${isNew ? '<span class="badge-new">NUEVO</span>' : ""}</b><div class="pct-ring" style="--p:${p};--c:${c}"><span>${p}%</span></div></div>
     ${A(z.filtro).length ? (()=>{ const ok = A(z.filtro).filter(c=>c.estado==="ok").length, no = A(z.filtro).filter(c=>c.estado==="no").length; return `<span class="chip-o" title="Filtro de rentabilidad">${no ? "❌" : ok>=6 ? "✅" : "⚠️"} Filtro de rentabilidad: ${ok} de ${A(z.filtro).length}</span>`; })() : ""}
-    <span class="chip-o">🌎 Gana en ${esc(S(z.pais_origen,"otro país"))}${dk.ventas_7d ? " · " + esc(S(dk.ventas_7d)) + " ventas en 7 días" : ""}</span>
+    ${radarEsCO(x) ? `<span class="chip-o">🇨🇴 En testeo en Colombia${dk.ventas_dia ? " · " + esc(S(dk.ventas_dia)) + " al día" : ""}${dk.ventas_7d ? " · " + esc(S(dk.ventas_7d)) + " en 7 días" : ""}</span>` : `<span class="chip-o">🌎 Gana en ${esc(S(z.pais_origen,"otro país"))}${dk.ventas_7d ? " · " + esc(S(dk.ventas_7d)) + " ventas en 7 días" : ""}</span>`}
     <div class="ver">${esc(S(m.veredicto))}</div>
     ${satHTML(r)}
     <dl><div><dt>Precio de venta sugerido</dt><dd>${money(n.P)}</dd></div><div><dt>Costo proveedor</dt><dd>${money(n.C)}</dd></div>
