@@ -1076,9 +1076,40 @@ async function callClaude(cfg, msgs, imgs, fnTools, web, opts){
   return text;
 }
 
+// Google retira modelos con el tiempo: preguntamos cuáles hay para esta cuenta y escogemos el mejor (se guarda 1 día).
+function geminiAuth(cfg){
+  if(cfg.auth==="google"){ const t = gTok(); if(!t) throw {code:"google_expired"}; return {"authorization":"Bearer " + t.token}; }
+  return {"x-goog-api-key":cfg.key};
+}
+const G_ALIAS = {quick:"gemini-flash-latest", default:"gemini-flash-latest", complex:"gemini-pro-latest"};
+async function geminiModels(cfg, force){
+  const c = store.get("ac.gmodels", null);
+  if(!force && c && c.t > Date.now() - 86400000 && c.quick) return c;
+  let names = [];
+  try{
+    const j = await keyFetch("https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000", {headers:geminiAuth(cfg)});
+    names = A(j.models).filter(m=>A(m.supportedGenerationMethods).includes("generateContent")).map(m=>S(m.name).replace(/^models\//,""));
+  }catch(e){ if(e?.code==="google_expired") throw e; }
+  const ok = x => !/(lite|image|tts|audio|live|embed|vision|thinking|exp|learnlm|gemma|robotics|computer|nano|banana)/i.test(x);
+  const ver = x => +(S(x).match(/gemini-(d+(?:.d+)?)/)||[0,0])[1];
+  const best = re => names.filter(x=>re.test(x) && ok(x)).sort((a,b)=> ver(b)-ver(a) || (/preview/.test(a)-/preview/.test(b)) || a.length-b.length)[0];
+  const flash = best(/^gemini-[d.]+-flash/) || (names.includes("gemini-flash-latest") ? "gemini-flash-latest" : "") || best(/flash/);
+  const pro = best(/^gemini-[d.]+-pro/) || (names.includes("gemini-pro-latest") ? "gemini-pro-latest" : "") || flash;
+  const r = flash ? {t:Date.now(), quick:flash, default:flash, complex:pro || flash} : {t:Date.now(), ...G_ALIAS, alias:true};
+  if(!r.alias) store.set("ac.gmodels", r);
+  return r;
+}
 async function callGemini(cfg, msgs, imgs, fnTools, web, opts, json){
+  try{ return await callGemini1(cfg, msgs, imgs, fnTools, web, opts, json, false); }
+  catch(e){
+    if(e?.code!=="bad_model") throw e;
+    if(cfg.model){ cfg = {...cfg, model:""}; const c = keyCfg(); if(c) store.set("ac.ia", {...c, model:""}); } // modelo escrito a mano que ya no existe: usar el automático
+    return await callGemini1(cfg, msgs, imgs, fnTools, web, opts, json, true);
+  }
+}
+async function callGemini1(cfg, msgs, imgs, fnTools, web, opts, json, force){
   const status = opts.__status || (()=>{});
-  const model = cfg.model || KEY_PROVS.gemini.models[opts.modelTier||"default"];
+  const model = cfg.model || (await geminiModels(cfg, force))[opts.modelTier||"default"];
   const textTasks = web && fnTools.length;
   const contents = msgs.map(m=>({role: m.role==="assistant" ? "model" : "user", parts:[{text:S(m.content)}]}));
   const last = contents[contents.length-1];
@@ -1090,8 +1121,7 @@ async function callGemini(cfg, msgs, imgs, fnTools, web, opts, json){
   if(json && !web && !fnTools.length) body.generationConfig = {responseMimeType:"application/json"};
   if(web) status("Buscando en la web con Google…");
   for(let turn = 0; turn < 10; turn++){
-    let auth = {"x-goog-api-key":cfg.key};
-    if(cfg.auth==="google"){ const t = gTok(); if(!t) throw {code:"google_expired"}; auth = {"authorization":"Bearer " + t.token}; }
+    const auth = geminiAuth(cfg);
     const j = await keyFetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {method:"POST", headers:{"content-type":"application/json", ...auth}, body:JSON.stringify(body)}, opts.signal);
     const cand = A(j.candidates)[0];
     if(!cand){ if(j.promptFeedback?.blockReason) throw {code:"refused"}; throw {code:"empty_completion"}; }
@@ -1229,7 +1259,7 @@ function aiErr(e){
     case "google_expired": return "Tu sesión de Google para la IA venció. Toca “🔄 Reconectar con Google” arriba (no te pide la contraseña otra vez).";
     case "google_cancel": return "No se completó el inicio de sesión con Google. Inténtalo otra vez; si dice que la app no está verificada, toca “Continuar”.";
     case "bad_key": return "La clave de la IA no es válida o no tiene permiso. Revísala en “Conectar mi IA”.";
-    case "bad_model": return "Ese modelo no existe para tu clave. Borra el campo “Modelo” en “Conectar mi IA” para usar el de siempre.";
+    case "bad_model": return "La IA no encontró un modelo disponible para tu cuenta. Toca “Conectar mi IA”, deja vacío el campo “Modelo” y vuelve a intentar.";
     case "rate_limited": return KEY_MODE ? "Tu clave llegó al límite de uso o no tiene saldo por ahora. Espera un momento o revisa tu cuenta de " + KEY_PROVS[KEY_MODE.prov].corto + "." : "Llegaste al límite de uso de tu cuenta de Claude por ahora. Espera un momento o usa el modo Rápido.";
     case "not_granted": return "No se dio permiso a la IA. Actívalo desde el menú de permisos de esta página.";
     case "session_expired": return "Tu sesión de Claude expiró. Vuelve a iniciar sesión.";
