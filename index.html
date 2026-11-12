@@ -363,6 +363,10 @@ body.locked .app{visibility:hidden}
     <p style="margin:0;color:var(--muted);font-size:13.5px">Elige tu IA y pega tu clave de API. Se guarda solo en este navegador y en tu perfil, y la IA se usa directo desde aquí: nadie más la ve.</p>
     <label style="display:flex;flex-direction:column;gap:6px;font-size:13px">IA<select id="iaProv" style="padding:10px;border-radius:10px;background:var(--bg);color:var(--fg);border:1px solid var(--line-2)">
       <option value="gemini">Gemini (Google) · gratis para empezar</option><option value="openai">ChatGPT (OpenAI)</option><option value="claude">Claude (Anthropic)</option></select></label>
+    <div id="iaGoogle" hidden style="display:flex;flex-direction:column;gap:8px;border:1px solid var(--line-2);border-radius:12px;padding:12px">
+      <button type="button" id="iaGoogleBtn" style="display:flex;align-items:center;justify-content:center;gap:10px;padding:11px;border-radius:10px;border:1px solid #dadce0;background:#fff;color:#1f1f1f;font-weight:700;cursor:pointer"><svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.4 30.2 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.8 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.6c0-1.6-.1-3.1-.4-4.6H24v9h12.4c-.5 2.9-2.2 5.3-4.6 7l7.4 5.7c4.3-4 6.9-9.9 6.9-17.1z"/><path fill="#FBBC05" d="M10.5 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.8-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.8-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.4-5.7c-2.1 1.4-4.8 2.3-8.5 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.8 6.1C6.6 42.6 14.6 48 24 48z"/></svg>Iniciar sesión con Google</button>
+      <small style="color:var(--muted)">Se abre la ventana oficial de Google: pones ahí tu correo y contraseña y la IA de Gemini queda activa. Tu contraseña nunca pasa por este panel.</small>
+    </div>
     <small id="iaNota" style="color:var(--muted);line-height:1.5"></small>
     <label style="display:flex;flex-direction:column;gap:6px;font-size:13px">Clave de API<input id="iaKey" type="password" autocomplete="off" spellcheck="false" style="padding:10px;border-radius:10px;background:var(--bg);color:var(--fg);border:1px solid var(--line-2)"></label>
     <label style="display:flex;flex-direction:column;gap:6px;font-size:13px">Modelo<input id="iaModel" autocomplete="off" spellcheck="false" style="padding:10px;border-radius:10px;background:var(--bg);color:var(--fg);border:1px solid var(--line-2)"></label>
@@ -804,11 +808,12 @@ document.addEventListener("keydown", e=>{
 }, true);
 lockInput.addEventListener("input", ()=>{ lockInput.value = ""; });
 document.getElementById("lockNow").addEventListener("click", ()=>lockShow());
-["iaBtn","iaBtn2"].forEach(id=>document.getElementById(id)?.addEventListener("click", ()=>iaOpen()));
+["iaBtn","iaBtn2"].forEach(id=>document.getElementById(id)?.addEventListener("click", e=>{ if(e.currentTarget.dataset.reconnect==="1") gReconnect(); else iaOpen(); }));
+document.getElementById("iaGoogleBtn").addEventListener("click", ()=>iaGoogle());
 document.getElementById("iaProv").addEventListener("change", ()=>iaPaint());
 document.getElementById("iaCancel").addEventListener("click", ()=>document.getElementById("iaDlg").close());
 document.getElementById("iaSave").addEventListener("click", ()=>iaSave());
-document.getElementById("iaOff").addEventListener("click", ()=>{ store.set("ac.ia", null); location.reload(); });
+document.getElementById("iaOff").addEventListener("click", ()=>{ const t = store.get("ac.gtok", null); try{ if(t && window.google?.accounts?.oauth2) google.accounts.oauth2.revoke(t.token); }catch{} store.set("ac.gtok", null); store.set("ac.ia", null); location.reload(); });
 document.getElementById("switchNow").addEventListener("click", ()=>{ lockShow(true); lockText.textContent = "Estabas en el perfil de " + PNAME + ". ¿Quién va a trabajar?"; });
 ["click","keydown","pointermove","scroll"].forEach(ev=>document.addEventListener(ev, ()=>{ if(lockEl.hidden) armIdle(); }, {passive:true}));
 document.getElementById("profName").textContent = "· " + PNAME;
@@ -956,7 +961,34 @@ const KEY_PROVS = {
   openai: {n:"ChatGPT (OpenAI)", corto:"ChatGPT", url:"https://platform.openai.com/api-keys", nota:"Necesitas una clave de la plataforma de OpenAI con saldo (la suscripción de ChatGPT Plus no trae clave de API).", models:{quick:"gpt-4.1-mini", default:"gpt-4.1", complex:"gpt-4.1"}},
   claude: {n:"Claude (Anthropic)", corto:"Claude", url:"https://console.anthropic.com/settings/keys", nota:"Necesitas una clave de la consola de Anthropic con saldo (la suscripción de Claude Pro no trae clave de API).", models:{quick:"claude-opus-5-5", default:"claude-opus-5-5", complex:"claude-opus-5-5"}},
 };
-let KEY_MODE = null; // {prov, key, model} cuando hay una IA con clave conectada
+let KEY_MODE = null;
+// Ingreso con Google para Gemini. El ID de cliente y el proyecto son públicos (no son secretos); la contraseña
+// se escribe SOLO en la ventana oficial de Google, nunca en este panel.
+const GOOGLE_OAUTH = {clientId:"", project:""};
+const G_SCOPES = "openid email https://www.googleapis.com/auth/generative-language.retriever https://www.googleapis.com/auth/cloud-platform";
+let gClient = null, gWaiting = null;
+const gReady = () => !!GOOGLE_OAUTH.clientId && !window.claude;
+const gTok = () => { const t = store.get("ac.gtok", null); return t && t.exp > Date.now() + 60000 ? t : null; };
+function gLoad(){
+  if(window.google?.accounts?.oauth2) return Promise.resolve();
+  return new Promise((ok, ko) => { const sc = document.createElement("script"); sc.src = "https://accounts.google.com/gsi/client"; sc.async = true; sc.onload = ok; sc.onerror = () => ko({code:"upstream_error", message:"No cargó el inicio de sesión de Google"}); document.head.appendChild(sc); });
+}
+function gInit(){
+  if(gClient || !window.google?.accounts?.oauth2) return gClient;
+  gClient = google.accounts.oauth2.initTokenClient({client_id:GOOGLE_OAUTH.clientId, scope:G_SCOPES, callback: async r => {
+    const w = gWaiting; gWaiting = null;
+    if(!r || r.error || !r.access_token){ w?.ko({code:"google_cancel", message:S(r?.error_description || r?.error)}); return; }
+    let email = S(store.get("ac.gtok", null)?.email);
+    try{ const u = await (await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {headers:{authorization:"Bearer " + r.access_token}})).json(); email = S(u.email, email); }catch{}
+    const t = {token:r.access_token, exp: Date.now() + (+r.expires_in || 3600) * 1000, email};
+    store.set("ac.gtok", t); w?.ok(t);
+  }, error_callback: e => { const w = gWaiting; gWaiting = null; w?.ko({code:"google_cancel", message:S(e?.type)}); }});
+  return gClient;
+}
+// Debe llamarse dentro de un clic (Google abre su ventana). prompt "" = sin volver a pedir contraseña si la sesión de Google sigue abierta.
+function gLogin(prompt){
+  return new Promise((ok, ko) => { if(!gInit()){ ko({code:"upstream_error", message:"Google aún no está listo"}); return; } gWaiting = {ok, ko}; gClient.requestAccessToken({prompt: prompt ?? ""}); });
+} // {prov, key, model} cuando hay una IA con clave conectada
 const keyCfg = () => store.get("ac.ia", null);
 function keyErr(status, msg){
   const m = String(msg||"");
@@ -1033,7 +1065,9 @@ async function callGemini(cfg, msgs, imgs, fnTools, web, opts, json){
   if(json && !web && !fnTools.length) body.generationConfig = {responseMimeType:"application/json"};
   if(web) status("Buscando en la web con Google…");
   for(let turn = 0; turn < 10; turn++){
-    const j = await keyFetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {method:"POST", headers:{"content-type":"application/json", "x-goog-api-key":cfg.key}, body:JSON.stringify(body)}, opts.signal);
+    let auth = {"x-goog-api-key":cfg.key};
+    if(cfg.auth==="google"){ const t = gTok(); if(!t) throw {code:"google_expired"}; auth = {"authorization":"Bearer " + t.token, "x-goog-user-project":GOOGLE_OAUTH.project}; }
+    const j = await keyFetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {method:"POST", headers:{"content-type":"application/json", ...auth}, body:JSON.stringify(body)}, opts.signal);
     const cand = A(j.candidates)[0];
     if(!cand){ if(j.promptFeedback?.blockReason) throw {code:"refused"}; throw {code:"empty_completion"}; }
     const parts = A(cand.content?.parts);
@@ -1099,10 +1133,24 @@ function makeKeySample(cfg){
   return fn;
 }
 
+function gNeedReconnect(){
+  setPill("pillAI","warn","IA: toca Reconectar con Google");
+  const b = $("#iaBtn"); b.hidden = false; b.textContent = "🔄 Reconectar con Google"; b.dataset.reconnect = "1";
+}
+async function gReconnect(){
+  try{ const t = await gLogin(""); const c = keyCfg(); if(c) keyConnect(c, true); $("#iaBtn").dataset.reconnect = ""; toast("Gemini reconectado" + (t.email ? " con " + t.email : "") + "."); }
+  catch(e){ toast(aiErr(e)); }
+}
+// Mantener la sesión: el token de Google dura 1 hora; se renueva en el siguiente clic, sin pedir contraseña.
+document.addEventListener("click", e=>{
+  if(KEY_MODE?.auth!=="google" || !gClient || e.target.closest("#iaDlg") || e.target.closest("#iaBtn")) return;
+  const t = store.get("ac.gtok", null);
+  if(!t || t.exp - Date.now() < 5*60*1000){ if(!gWaiting) gLogin("").then(()=>{ $("#iaBtn").dataset.reconnect = ""; const c = keyCfg(); if(c) keyConnect(c, true); }).catch(()=>gNeedReconnect()); }
+}, true);
 function keyConnect(cfg, quiet){
   sample = makeKeySample(cfg); KEY_MODE = cfg; toolsOk = true; webOk = true; imagesOk = true;
   const P = KEY_PROVS[cfg.prov];
-  setPill("pillAI","ok","IA: " + P.corto + " conectado");
+  setPill("pillAI","ok","IA: " + P.corto + (cfg.auth==="google" && gTok()?.email ? " · " + gTok().email : " conectado"));
   setPill("pillSync","ok","Datos: guardados en este navegador");
   $("#offline").hidden = true; $("#iaBtn").hidden = false; $("#iaBtn").textContent = "🤖 " + P.corto;
   renderWebPill(); rmCaps();
@@ -1115,8 +1163,21 @@ function toast(msg){
 }
 function iaPaint(){
   const p = $("#iaProv").value, P = KEY_PROVS[p];
+  $("#iaGoogle").hidden = !(p==="gemini" && gReady());
+  $("#iaKey").closest("label").firstChild.textContent = p==="gemini" && gReady() ? "O usa una clave de API de Gemini" : "Clave de API";
   $("#iaNota").innerHTML = `${esc(P.nota)} <a href="${P.url}" target="_blank" rel="noopener">Sacar mi clave de ${esc(P.corto)} ↗</a>`;
   $("#iaModel").placeholder = "Opcional. Por defecto: " + P.models.default;
+}
+async function iaGoogle(){
+  $("#iaMsg").textContent = "Abriendo la ventana de Google…";
+  try{
+    const t = await gLogin("select_account");
+    const cfg = {prov:"gemini", auth:"google", model:$("#iaModel").value.trim()};
+    $("#iaMsg").textContent = "Probando la IA con tu cuenta…";
+    const r = await makeKeySample(cfg)("Responde solo con la palabra: listo", {modelTier:"quick"});
+    if(!/listo/i.test(r.text)) throw {code:"empty_completion"};
+    store.set("ac.ia", cfg); $("#iaDlg").close(); keyConnect(cfg); toast("Listo: Gemini conectado con " + S(t.email, "tu cuenta de Google") + ".");
+  }catch(e){ $("#iaMsg").textContent = aiErr(e) + (e?.message ? " (" + S(e.message).slice(0,160) + ")" : ""); }
 }
 function iaOpen(){
   const c = keyCfg() || {prov:"gemini", key:"", model:""};
@@ -1138,6 +1199,8 @@ async function iaSave(){
 function aiErr(e){
   switch(e?.code){
     case "no_ai": return "Conecta tu IA (Gemini, ChatGPT o Claude) con el botón “Conectar mi IA”, o abre el panel en la app de Claude.";
+    case "google_expired": return "Tu sesión de Google para la IA venció. Toca “🔄 Reconectar con Google” arriba (no te pide la contraseña otra vez).";
+    case "google_cancel": return "No se completó el inicio de sesión con Google. Inténtalo otra vez; si dice que la app no está verificada, toca “Continuar”.";
     case "bad_key": return "La clave de la IA no es válida o no tiene permiso. Revísala en “Conectar mi IA”.";
     case "bad_model": return "Ese modelo no existe para tu clave. Borra el campo “Modelo” en “Conectar mi IA” para usar el de siempre.";
     case "rate_limited": return KEY_MODE ? "Tu clave llegó al límite de uso o no tiene saldo por ahora. Espera un momento o revisa tu cuenta de " + KEY_PROVS[KEY_MODE.prov].corto + "." : "Llegaste al límite de uso de tu cuenta de Claude por ahora. Espera un momento o usa el modo Rápido.";
@@ -2717,7 +2780,10 @@ initDb();
   try{ sample = await window.claude?.use?.("sample"); }catch{ sample = null; }
   if(!sample){
     $("#iaBtn").hidden = false;
-    const c = keyCfg(); if(c && c.key){ keyConnect(c, true); return; }
+    if(gReady()) gLoad().then(gInit).catch(()=>{});
+    const c = keyCfg();
+    if(c && c.auth==="google"){ keyConnect(c, true); if(!gTok()) gNeedReconnect(); return; }
+    if(c && c.key){ keyConnect(c, true); return; }
     setPill("pillAI","bad","IA: conecta tu IA"); $("#offline").hidden = false; renderWebPill(); return;
   }
   setPill("pillAI","ok","IA: Claude conectado");
