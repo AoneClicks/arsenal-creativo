@@ -1130,8 +1130,18 @@ async function callGemini(cfg, msgs, imgs, fnTools, web, opts, json){
     try{ return await callGemini1(cfg, cfg.model, msgs, imgs, fnTools, web, opts, json); }
     catch(e){ if(e?.code!=="bad_model") throw e; cfg = {...cfg, model:""}; const c = keyCfg(); if(c) store.set("ac.ia", {...c, model:""}); }
   }
+  if(web){
+    // La búsqueda de Google tiene un cupo aparte (en cuentas gratis se agota rápido): si se acabó, responder sin buscar y avisarlo.
+    try{ return await callGemini(cfg, msgs, imgs, fnTools, false, {...opts, __webTry:true}, json, true); }
+    catch(e){
+      if(e?.code!=="rate_limited") throw e;
+      status("Google limitó las búsquedas web de tu cuenta por ahora; respondo sin buscar.");
+      const r = await callGemini(cfg, msgs, imgs, fnTools, false, opts, json);
+      return json ? r : "(Ahora mismo Google no me deja buscar en la web con tu cuenta gratis, así que respondo con lo que sé.)\n\n" + r;
+    }
+  }
   const m = await geminiModels(cfg, false);
-  const chain = geminiChain(m, opts.modelTier || "default").slice(0, 6);
+  const chain = geminiChain(m, opts.modelTier || "default").slice(0, opts.__webTry ? 2 : 6);
   // Respaldo en paralelo: si un modelo no contesta en 6 s, se pregunta también al siguiente y gana el primero que responda.
   // El primero que trae respuesta "reclama" la carrera y los demás se cancelan (así las tareas no se anotan dos veces).
   return await new Promise((resolve, reject) => {
