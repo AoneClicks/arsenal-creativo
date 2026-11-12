@@ -439,7 +439,7 @@ body.locked .app{visibility:hidden}
           <p>Cada mañana Claude revisa Dropkiller y trae dos tipos de productos.</p>
           <ul>
             <li><b>Ganadores afuera:</b> venden bien en otros países y casi nadie los vende en Colombia.</li>
-            <li><b>En testeo en Colombia:</b> ya venden de 70 a 100 por semana aquí (unos 10 al día) y dejan entrar a competir con costo + $75.000.</li>
+            <li><b>En testeo en Colombia:</b> ya venden de 70 a 150 por semana aquí (10 a 20 al día) y dejan entrar a competir con costo + $75.000.</li>
           </ul>
           <p>Si un día ninguno cumple tus requisitos, te avisa que no encontró nada.</p>
         </div>
@@ -1724,7 +1724,7 @@ function renderRadar(){
   const co = L.filter(radarEsCO), afuera = L.filter(x=>!radarEsCO(x));
   $("#radarList").innerHTML =
     grupo("🌎 Ganadores afuera, sin testear en Colombia", "Venden fuerte en otros países y casi nadie los vende aquí. Nadie en Colombia los ofrece por debajo de costo + $75.000.", afuera, "Hoy no hay productos de afuera que cumplan tus requisitos. Claude vuelve a buscar mañana a las 7 a. m.") +
-    grupo("🇨🇴 En testeo en Colombia: para entrar a competir", "Ya venden de 70 a 100 por semana en Colombia (unos 10 al día), todavía no están saturados y la competencia los vende a tu precio o más caro.", co, "Hoy no hay productos en testeo en Colombia que cumplan tus requisitos. Claude vuelve a buscar mañana a las 7 a. m.");
+    grupo("🇨🇴 En testeo en Colombia: para entrar a competir", "Ya venden de 70 a 150 por semana en Colombia (10 a 20 al día), todavía no están saturados y la competencia los vende a tu precio o más caro.", co, "Hoy no hay productos en testeo en Colombia que cumplan tus requisitos. Claude vuelve a buscar mañana a las 7 a. m.");
   setTimeout(radarMarkSeen, 4000);
 }
 function radarToForm(x){
@@ -1761,7 +1761,7 @@ async function radarLoadCloud(){
 }
 const VIEWS = [
   {id:"inicio", name:"Inicio", icon:"home", desc:""},
-  {id:"radar", name:"Radar diario", icon:"radar", desc:"Cada día: ganadores de otros países sin testear aquí, y productos en testeo en Colombia (70 a 100 ventas por semana) para entrar a competir, con tu costeo."},
+  {id:"radar", name:"Radar diario", icon:"radar", desc:"Cada día: ganadores de otros países sin testear aquí, y productos en testeo en Colombia (70 a 150 ventas por semana) para entrar a competir, con tu costeo."},
   {id:"productos", name:"Productos ganadores", icon:"trophy", desc:"Tus productos analizados con potencial, números y la hoja de ruta completa. Aquí también analizas productos nuevos."},
   {id:"calculadora", name:"Calculadora de costeo", icon:"numeros", desc:"Ganancia por pedido, CPA máximo y ROAS de equilibrio, en unidad y en combo."},
   {id:"estudio", name:"Estudio IA", icon:"contenido", desc:"Guiones, hooks, copy, fichas de producto, ventas por WhatsApp, correos e investigación web."},
