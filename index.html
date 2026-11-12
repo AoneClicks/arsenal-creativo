@@ -2822,7 +2822,7 @@ initDb();
       return;
     }
     if(G_BACK && !G_BACK.ok && !G_BACK.silent){
-      if(G_BACK.error==="falta_permiso"){ const o = $("#offline"); o.hidden = false; setPill("pillAI","warn","IA: falta el permiso de Gemini"); toast("Google no dio el permiso de Gemini. Toca “Entrar con Google” otra vez y, en la pantalla de permisos, marca TODAS las casillas antes de Continuar.", 12000); }
+      if(G_BACK.error==="falta_permiso"){ const o = $("#offline"); o.hidden = false; setPill("pillAI","warn","IA: falta el permiso de Gemini"); toast("Google no dio el permiso de Gemini. Toca “Entrar con Google” otra vez y, en la pantalla de permisos, marca TODAS las casillas antes de Continuar."); renderWebPill(); return; }
       else toast("No se completó el inicio de sesión con Google (" + G_BACK.error + "). Inténtalo otra vez.");
     }
     if(c && c.key){ keyConnect(c, true); return; }
