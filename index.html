@@ -2002,7 +2002,9 @@ async function send(){
 let imagesOk = false, downloads = null, rmCtrl = null, rmCurrent = null;
 // Las hojas de ruta incluidas en el panel siempre traen su versión más nueva (por ejemplo, la pestaña Meta Ads).
 const rmFresh = list => list.map(x => SEED_ROADMAPS.find(s => s.id === x.id) || x);
-data.roadmaps = rmFresh(store.get("ac.roadmaps", null) || SEED_ROADMAPS.slice());
+// Hojas de ruta que Andrés descartó: se quitan también de la copia guardada en cada navegador.
+const RM_BORRADAS = ["mwd1dtgers7qb"];
+data.roadmaps = rmFresh((store.get("ac.roadmaps", null) || SEED_ROADMAPS.slice()).filter(x => !RM_BORRADAS.includes(x.id)));
 $("#rmPais").innerHTML = COUNTRIES.map(c=>`<option${c.id==="CO"?" selected":""}>${c.n}</option>`).join("");
 const money = n => "$" + Math.round(+n||0).toLocaleString("es-CO");
 const S = (x, d="") => (x===undefined || x===null) ? d : String(x);
