@@ -1693,14 +1693,14 @@ Reglas:
 // 3) Una forma de producto que se toma o se aplica (gotas, crema, aceite…) + una condición del cuerpo (dolor, piel…) también.
 const RM_NO_SALUD = /(energ[ií]a solar|panel(es)? solar(es)?|carga solar|luz natural|gas natural|(madera|cuero|piedra|fibra|tela|color|tono|aspecto|look|caucho|goma|seda|lino) natural(es)?|piel sint[eé]tica|cuero sint[eé]tico|visi[oó]n nocturna|alta definici[oó]n|f[oó]rmula 1)/gi;
 const RM_SALUD_FUERTE = /(suplement|c[aá]psulas|tabletas|comprimidos|gotas (para|de|naturales)|col[aá]geno|vitamina|magnesio|zinc|drenaje linf|linf[aá]tic|tinnitus|zumbido en (el|los) o[ií]do|artritis|artrosis|pr[oó]stat|diabet|glucosa|az[uú]car en la sangre|colesterol|triglic[eé]rid|hipertensi|presi[oó]n arterial|adelgaz|bajar de peso|perder peso|quema ?grasa|quemador|detox|desintoxic|hongos|onicomicosis|v[aá]rices|hemorroid|probi[oó]tic|prebi[oó]tic|shilajit|batana|ung[uü]ento|pomada|t[oó]nico capilar|elixir|remedio|medicinal|fitoterap|homeop|extracto (de|natural)|f[oó]rmula natural|100 ?% natural|ingredientes naturales|antiinflamatori|analg[eé]sic|ci[aá]tica|neuropat|insomnio|ansiedad|libido|disfunci[oó]n|potenciador|retardante|menopausia|h[ií]gado graso|estre[ñn]imiento|gastritis|reflujo|acn[eé]|melasma|ca[ií]da del cabello|crecimiento del cabello|cubre ?canas|caspa|psoriasis|dermatitis|antiarrugas|anti ?edad|s[eé]rum facial|nad\+|resveratrol|berberina|ashwagandha|moringa|c[uú]rcuma|ginseng|espirulina|guan[aá]bana|aceite de or[eé]gano|semilla negra|black seed|apio en polvo|t[eé] (adelgazante|detox|medicinal)|jarabe|infusi[oó]n (para|de hierbas)|parche (para el dolor|adelgazante|detox|kinoki)|kinoki|plantilla magn[eé]tica)/i;
-const RM_FORMA = /\b(gotas|crema|aceite|b[aá]lsamo|gel|loci[oó]n|parche|spray|t[eé]|infusi[oó]n|polvo|jarabe|tintura|roll-?on|champ[uú]|shampoo|mascarilla|ung[uü]ento|unt[aá]ble|bebida|batido)\b/i;
+const RM_FORMA = /(?:^|[^a-záéíóúñ])(gotas|crema|aceite|b[aá]lsamo|gel|loci[oó]n|parche|spray|t[eé]|infusi[oó]n|polvo|jarabe|tintura|roll-?on|champ[uú]|shampoo|mascarilla|ung[uü]ento|unt[aá]ble|bebida|batido)(?=[^a-záéíóúñ]|$)/i;
 const RM_CONDICION = /\b(dolor|dolores|piel|cabello|o[ií]dos?|ojos|vista|sue[ñn]o|inflamaci[oó]n|articulaci[oó]n|articulaciones|rodillas?|espalda|cuello|m[uú]sculos?|nervios?|circulaci[oó]n|digesti[oó]n|est[oó]mago|colon|ri[ñn]ones?|pulmones|defensas|inmunidad|peso|grasa|celulitis|manchas|arrugas|estr[eé]s|cansancio|fatiga|memoria|concentraci[oó]n)\b/i;
 function rmTipoProducto(i){
   const t = (S(i.nombre) + " " + S(i.hace)).replace(RM_NO_SALUD, " ");
   const fuerte = t.match(RM_SALUD_FUERTE);
   if(fuerte) return {seguro:true, razon:"menciona “" + fuerte[0].trim() + "”"};
   const forma = t.match(RM_FORMA), cond = t.match(RM_CONDICION);
-  if(forma && cond) return {seguro:true, razon:"es " + forma[0].toLowerCase() + " para " + cond[0].toLowerCase()};
+  if(forma && cond) return {seguro:true, razon:"es " + forma[1].toLowerCase() + " para " + cond[0].toLowerCase()};
   return {seguro:false, razon:"no es un producto natural, de salud ni medicinal"};
 }
 function rmIsSensible(i){ return rmTipoProducto(i).seguro; }
