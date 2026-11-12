@@ -964,7 +964,7 @@ const KEY_PROVS = {
 let KEY_MODE = null;
 // Ingreso con Google para Gemini. El ID de cliente y el proyecto son públicos (no son secretos); la contraseña
 // se escribe SOLO en la ventana oficial de Google, nunca en este panel.
-const GOOGLE_OAUTH = {clientId:"", project:""};
+const GOOGLE_OAUTH = {clientId:"51560681641-4hr199ad67clka1vh66o9k7peels7coi.apps.googleusercontent.com", project:"arsenal-creativo"};
 const G_SCOPES = "openid email https://www.googleapis.com/auth/generative-language.retriever https://www.googleapis.com/auth/cloud-platform";
 let gClient = null, gWaiting = null;
 const gReady = () => !!GOOGLE_OAUTH.clientId && !window.claude;
@@ -1066,7 +1066,7 @@ async function callGemini(cfg, msgs, imgs, fnTools, web, opts, json){
   if(web) status("Buscando en la web con Google…");
   for(let turn = 0; turn < 10; turn++){
     let auth = {"x-goog-api-key":cfg.key};
-    if(cfg.auth==="google"){ const t = gTok(); if(!t) throw {code:"google_expired"}; auth = {"authorization":"Bearer " + t.token, "x-goog-user-project":GOOGLE_OAUTH.project}; }
+    if(cfg.auth==="google"){ const t = gTok(); if(!t) throw {code:"google_expired"}; auth = {"authorization":"Bearer " + t.token}; }
     const j = await keyFetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {method:"POST", headers:{"content-type":"application/json", ...auth}, body:JSON.stringify(body)}, opts.signal);
     const cand = A(j.candidates)[0];
     if(!cand){ if(j.promptFeedback?.blockReason) throw {code:"refused"}; throw {code:"empty_completion"}; }
