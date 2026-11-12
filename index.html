@@ -1099,6 +1099,48 @@ async function geminiModels(cfg, force){
   if(!r.alias) store.set("ac.gmodels", r);
   return r;
 }
+// Respuesta en vivo (va apareciendo mientras Gemini escribe). Si Google se queda callado 90 s, se corta con aviso.
+async function gemStream(url, init, signal, onText){
+  const ctrl = new AbortController(); let timedOut = false, timer = null;
+  const arm = () => { clearTimeout(timer); timer = setTimeout(()=>{ timedOut = true; ctrl.abort(); }, 90000); };
+  const onAbort = () => ctrl.abort(); signal?.addEventListener?.("abort", onAbort);
+  arm();
+  try{
+    let res;
+    try{ res = await fetch(url, {...init, signal:ctrl.signal}); }
+    catch(e){ throw timedOut ? {code:"upstream_error", message:"Google no respondió en 90 segundos"} : {code: signal?.aborted ? "cancelled" : "upstream_error", message:String(e?.message||e)}; }
+    if(!res.ok){ const raw = await res.text(); let j = null; try{ j = JSON.parse(raw); }catch{} throw keyErr(res.status, (Array.isArray(j) ? j[0] : j)?.error?.message || raw.slice(0,300)); }
+    const parts = [], out = {candidates:[{content:{parts}}]};
+    let text = "", buf = "";
+    const take = ev => {
+      let j; try{ j = JSON.parse(ev); }catch{ return; }
+      if(j.promptFeedback) out.promptFeedback = j.promptFeedback;
+      const c = A(j.candidates)[0]; if(!c) return;
+      if(c.finishReason) out.candidates[0].finishReason = c.finishReason;
+      for(const p of A(c.content?.parts)){
+        const prev = parts[parts.length-1];
+        if(typeof p.text==="string" && prev && typeof prev.text==="string" && !!prev.thought===!!p.thought && !p.thoughtSignature && !prev.functionCall){ prev.text += p.text; }
+        else parts.push({...p});
+        if(typeof p.text==="string" && !p.thought){ text += p.text; onText?.(text); }
+      }
+    };
+    const rd = res.body.getReader(), dec = new TextDecoder();
+    for(;;){
+      let r;
+      try{ r = await rd.read(); }
+      catch(e){ throw timedOut ? {code:"upstream_error", message:"Google dejó de responder (90 segundos sin datos)"} : {code: signal?.aborted ? "cancelled" : "upstream_error", message:String(e?.message||e), text}; }
+      if(r.done) break;
+      arm(); buf += dec.decode(r.value, {stream:true});
+      let k; while((k = buf.indexOf("\n\n")) >= 0 || (k = buf.indexOf("\r\n\r\n")) >= 0){
+        const chunk = buf.slice(0, k); buf = buf.slice(k + (buf[k]==="\r" ? 4 : 2));
+        const data = chunk.split(/\r?\n/).filter(l=>l.startsWith("data:")).map(l=>l.slice(5).trim()).join("");
+        if(data) take(data);
+      }
+    }
+    const rest = buf.split(/\r?\n/).filter(l=>l.startsWith("data:")).map(l=>l.slice(5).trim()).join(""); if(rest) take(rest);
+    return out;
+  } finally { clearTimeout(timer); signal?.removeEventListener?.("abort", onAbort); }
+}
 async function callGemini(cfg, msgs, imgs, fnTools, web, opts, json){
   try{ return await callGemini1(cfg, msgs, imgs, fnTools, web, opts, json, false); }
   catch(e){
