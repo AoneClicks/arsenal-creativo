@@ -1130,9 +1130,9 @@ async function callGemini(cfg, msgs, imgs, fnTools, web, opts, json){
     try{ return await callGemini1(cfg, cfg.model, msgs, imgs, fnTools, web, opts, json); }
     catch(e){ if(e?.code!=="bad_model") throw e; cfg = {...cfg, model:""}; const c = keyCfg(); if(c) store.set("ac.ia", {...c, model:""}); }
   }
-  if(web){
+  if(web && !opts.__webTry){
     // La búsqueda de Google tiene un cupo aparte (en cuentas gratis se agota rápido): si se acabó, responder sin buscar y avisarlo.
-    try{ return await callGemini(cfg, msgs, imgs, fnTools, false, {...opts, __webTry:true}, json, true); }
+    try{ return await callGemini(cfg, msgs, imgs, fnTools, true, {...opts, __webTry:true}, json); }
     catch(e){
       if(e?.code!=="rate_limited") throw e;
       status("Google limitó las búsquedas web de tu cuenta por ahora; respondo sin buscar.");
