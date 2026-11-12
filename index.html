@@ -1087,7 +1087,8 @@ async function geminiModels(cfg, force){
   if(!force && c && c.t > Date.now() - 86400000 && c.quick) return c;
   let names = [];
   try{
-    const j = await keyFetch("https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000", {headers:geminiAuth(cfg)});
+    const tc = new AbortController(); const tt = setTimeout(()=>tc.abort(), 15000);
+    const j = await keyFetch("https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000", {headers:geminiAuth(cfg)}, tc.signal).finally(()=>clearTimeout(tt));
     names = A(j.models).filter(m=>A(m.supportedGenerationMethods).includes("generateContent")).map(m=>S(m.name).replace(/^models\//,""));
   }catch(e){ if(e?.code==="google_expired") throw e; }
   const ok = x => !/(lite|image|tts|audio|live|embed|vision|thinking|-exp|learnlm|gemma|robotics|computer|nano|banana|customtools)/i.test(x);
