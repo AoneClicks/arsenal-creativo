@@ -1957,7 +1957,8 @@ async function send(){
       if(err.text){ data.chat.push({role:"assistant", content:err.text}); persist("chat"); } else body.textContent = "Detenido.";
     } else {
       body.parentElement.classList.add("err");
-      body.innerHTML = (err?.text ? linkify(clean(err.text)) + "\n\n" : "") + esc(aiErr(err));
+      body.innerHTML = (err?.text ? linkify(clean(err.text)) + "\n\n" : "") + esc(aiErr(err)) + (KEY_MODE && err?.message ? `<br><small style="opacity:.75">Detalle: ${esc(String(err.message).slice(0,240))}</small>` : "");
+      if(KEY_MODE) console.warn("IA error", err);
     }
   }finally{
     if(chatCtrl===ctrl){ chatBusy = false; chatCtrl = null; $("#send").hidden = false; $("#stopChat").hidden = true; }
