@@ -1162,13 +1162,13 @@ async function callGemini(cfg, msgs, imgs, fnTools, web, opts, json){
     launch();
   });
 }
-// Una llamada normal (no en vivo: en estas cuentas el modo en vivo de Google tarda mucho más). Límite: 45 s por intento.
+// Una llamada normal (no en vivo: en estas cuentas el modo en vivo de Google tarda mucho más). Límite: 30 s por intento.
 async function gemCall(url, init, signal){
   const ctrl = new AbortController(); let timedOut = false;
-  const timer = setTimeout(()=>{ timedOut = true; ctrl.abort(); }, 45000);
+  const timer = setTimeout(()=>{ timedOut = true; ctrl.abort(); }, 30000);
   const onAbort = () => ctrl.abort(); signal?.addEventListener?.("abort", onAbort);
   try{ return await keyFetch(url, init, ctrl.signal); }
-  catch(e){ if(timedOut) throw {code:"upstream_error", message:"Google no respondió en 45 segundos"}; if(signal?.aborted) throw {code:"cancelled"}; throw e; }
+  catch(e){ if(timedOut) throw {code:"upstream_error", message:"Google no respondió en 30 segundos"}; if(signal?.aborted) throw {code:"cancelled"}; throw e; }
   finally{ clearTimeout(timer); signal?.removeEventListener?.("abort", onAbort); }
 }
 async function callGemini1(cfg, model, msgs, imgs, fnTools, web, opts, json, race, me){
