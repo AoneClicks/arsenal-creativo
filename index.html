@@ -3050,7 +3050,7 @@ function lpWire(root, r){
   });
   const ctrl = root.querySelector(".lp-ctrl"); if(!ctrl || !r.landing) return;
   const L = r.landing; L.__fotos = L.__fotos || {};
-  if(!L.__wa) L.__wa = S(store.get("ac.lwa", ""));
+  if(!L.__wa) L.__wa = S(store.get("ac.lwa", "")) || LP_WA_TIENDA;
   if(!L.__pixel) L.__pixel = S(store.get("ac.lpixel", ""));
   const slug = lpSlug(r), canPub = !!(cloud && window.claude);
   ctrl.innerHTML = `<label>WhatsApp que recibe los pedidos (con 57, solo números)<input class="lp-wa" inputmode="numeric" placeholder="573001234567" value="${esc(L.__wa)}"></label>
