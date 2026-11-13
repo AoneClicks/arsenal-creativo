@@ -3053,7 +3053,7 @@ function lpWire(root, r){
   if(!L.__wa) L.__wa = S(store.get("ac.lwa", "")) || LP_WA_TIENDA;
   if(!L.__pixel) L.__pixel = S(store.get("ac.lpixel", ""));
   const slug = lpSlug(r), canPub = !!(cloud && window.claude);
-  ctrl.innerHTML = `<label>WhatsApp que recibe los pedidos (con 57, solo números)<input class="lp-wa" inputmode="numeric" placeholder="573001234567" value="${esc(L.__wa)}"></label>
+  ctrl.innerHTML = `<label>WhatsApp que recibe los pedidos (ChateaPro: 573238849321)<input class="lp-wa" inputmode="numeric" placeholder="573001234567" value="${esc(L.__wa)}"></label>
 <label>ID del Pixel de Meta (opcional: mide visitas y pedidos para optimizar)<input class="lp-px" inputmode="numeric" placeholder="123456789012345" value="${esc(L.__pixel)}"></label>
 <div class="row"><button type="button" class="pri lp-dl">⬇️ Descargar landing (HTML)</button>${canPub ? `<button type="button" class="lp-pub">🚀 Publicar en GitHub</button>` : ""}</div>
 <div class="st lp-st">${canPub ? `Cuando te guste, toca <b>Publicar en GitHub</b>. Solo con tu autorización Claude la sube a <b>${esc(LP_BASE + slug)}/</b> para que la uses en Meta.` : "Para publicarla en GitHub ábrela desde el panel de Claude. Aquí puedes descargarla en HTML."}</div>`;
