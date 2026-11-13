@@ -2371,7 +2371,7 @@ function rmPromptF(t, r, a){
   const subj = per ? `${S(a?.desc_en)}; ${fillProduct(t.subject_en, p)}` : fillProduct(t.subject_en, p);
   return `[STYLE LOCK]: ${per ? PERSON_LOCK : S(r.estilo_en,"Vertical photo, cinematic product photography for a social ad, shallow depth of field, true to life color, crisp detail")}
 [SUBJECT]: ${subj}
-[ACTION]: ${S(t.action_en)}
+[ACTION]: ${S(t.action_en)}${S(t.emocion_en) || per ? `\n[MOOD]: ${S(t.emocion_en, MOOD_PERSONA)}` : ""}
 [ENVIRONMENT]: ${S(t.environment_en)}
 [LIGHTING]: ${S(t.lighting_en)}
 [CAMERA]: ${S(t.camera_en)}
