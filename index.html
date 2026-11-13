@@ -2170,7 +2170,8 @@ const RM_SALUD_FUERTE = /(suplement|c[aá]psulas|tabletas|comprimidos|gotas (par
 const RM_FORMA = /(?:^|[^a-záéíóúñ])(gotas|crema|aceite|b[aá]lsamo|gel|loci[oó]n|parche|spray|t[eé]|infusi[oó]n|polvo|jarabe|tintura|roll-?on|champ[uú]|shampoo|mascarilla|ung[uü]ento|unt[aá]ble|bebida|batido)(?=[^a-záéíóúñ]|$)/i;
 const RM_CONDICION = /\b(dolor|dolores|piel|cabello|o[ií]dos?|ojos|vista|sue[ñn]o|inflamaci[oó]n|articulaci[oó]n|articulaciones|rodillas?|espalda|cuello|m[uú]sculos?|nervios?|circulaci[oó]n|digesti[oó]n|est[oó]mago|colon|ri[ñn]ones?|pulmones|defensas|inmunidad|peso|grasa|celulitis|manchas|arrugas|estr[eé]s|cansancio|fatiga|memoria|concentraci[oó]n)\b/i;
 function rmTipoProducto(i){
-  const t = (S(i.nombre) + " " + S(i.hace)).replace(RM_NO_SALUD, " ");
+  // Las aclaraciones en negativo ("NO es un dispositivo médico: no trata la ansiedad") no vuelven el producto de salud.
+  const t = (S(i.nombre) + " " + S(i.hace)).replace(/\b(no|nunca|ni)\s+(es|son|trata|tratan|cura|curan|sirve|sirven|reemplaza|reemplazan|previene|promete|prometer)\b[^.;\n]*/gi, " ").replace(RM_NO_SALUD, " ");
   const fuerte = t.match(RM_SALUD_FUERTE);
   if(fuerte) return {seguro:true, razon:"menciona “" + fuerte[0].trim() + "”"};
   const forma = t.match(RM_FORMA), cond = t.match(RM_CONDICION);
