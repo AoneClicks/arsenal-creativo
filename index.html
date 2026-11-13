@@ -2380,7 +2380,7 @@ function rmPromptF(t, r, a){
 [PRODUCT]: ${S(p.lock_en)}
 [EXCLUDE]: ${per ? EXCL_P : EXCL}`;
 }
-function rmPromptC(t, r){ const c = t.clip || {}; return `[ACTION]: ${S(c.action_en)}
+function rmPromptC(t, r){ const c = t.clip || {}; const mood = S(c.emocion_en, S(t.emocion_en, t.persona ? MOOD_PERSONA : "")); return `[ACTION]: ${S(c.action_en)}${mood ? `\n[MOOD]: ${mood}, natural lively movement` : ""}
 [CAMERA]: ${S(c.camera_en)}
 [CONTINUITY]: ${S(c.continuity_en)}
 [PRODUCT]: ${S(r.producto?.motion_lock_en)}`; }
