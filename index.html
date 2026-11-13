@@ -2979,7 +2979,7 @@ ${prodLines}
 <nav class="tabs">${tb.map(([k,l],j)=>`<button data-k="${k}" class="${j===0?"on":""}">${esc(l)}</button>`).join("")}</nav></header>
 <main>${sc.map(([k,x],j)=>`<section class="tab${j===0?" on":""}" id="${k}">${x}</section>`).join("")}</main></div>`;
   }
-  const sections = [["inicio",inicio], ...(r.meta ? [["meta",meta]] : []), ...(A(r.imagenes_ad).length ? [["imagenes",imgs]] : []), ["mercado",merc], ...varTabs.map((s,k)=>["v"+(k+1), s]), ["ganchos",ganchos]];
+  const sections = [["inicio",inicio], ...(r.meta ? [["meta",meta]] : []), ...(A(r.imagenes_ad).length ? [["imagenes",imgs]] : []), ...(lpTab ? [["landing",lpTab]] : []), ["mercado",merc], ...varTabs.map((s,k)=>["v"+(k+1), s]), ["ganchos",ganchos]];
   return `<div class="rm"><header><h1>${esc(S(r.titulo, r.__input?.nombre || "Hoja de ruta"))}</h1><p>${esc(S(r.subtitulo))}</p>
 <nav class="tabs">${tabs.map(([k,l],j)=>`<button data-k="${k}" class="${j===0?"on":""}">${esc(l)}</button>`).join("")}</nav></header>
 <main>${sections.map(([k,s],j)=>`<section class="tab${j===0?" on":""}" id="${k}">${s}</section>`).join("")}</main></div>`;
