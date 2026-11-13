@@ -2722,7 +2722,8 @@ function rmBody(r){
   const pb = (title, att, text) => { n++; return `<div class="pb"><div class="ph"><b>${esc(title)}</b><button class="cp" data-t="t${n}">Copiar</button></div>${att ? `<div class="att">${att}</div>` : ""}<pre id="t${n}">${esc(text)}</pre></div>`; };
   const table = (heads, rows) => `<div class="tw"><table><thead><tr>${heads.map(x=>`<th>${esc(x)}</th>`).join("")}</tr></thead><tbody>${rows.map(rw=>`<tr>${rw.map(c=>`<td>${esc(S(c))}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
   const att = (lbl, v) => `<span>${lbl}:</span> ${esc(v)}`;
-  const lpTab = r.__input && !r.__radar ? lpTabHTML(r, pb) : "";
+  let lpTab = "";
+  if(r.__input && !r.__radar){ try{ lpTab = lpTabHTML(r, pb); }catch(e){ lpTab = `<h2>🛒 Landing de ventas</h2><div class="warn">No se pudo mostrar la landing: ${esc(S(e?.message||e))}. El resto de la hoja de ruta funciona normal.</div>`; } }
   const tabs = [["inicio","Inicio"], ...(r.meta ? [["meta","📣 Cómo pautar en Meta"]] : []), ...(A(r.imagenes_ad).length ? [["imagenes","🖼️ Anuncios de imagen"]] : []), ...(lpTab ? [["landing","🛒 Landing"]] : []), ["mercado","Mercado y números"], ...vs.map((v,k)=>["v"+(k+1), `${S(v.id,"V"+(k+1))} · ${S(v.nombre)}`]), ["ganchos","Ganchos"]];
 
   let inicio = "";
