@@ -2946,7 +2946,7 @@ ${prodLines}
 
     const gan = A(r.ganchos).length ? `<h2>Banco de ganchos</h2><p>Cada uno reemplaza los primeros 3 segundos de una variación, con lenguaje seguro.</p>` + table(["#","Qué se ve","Qué se dice","Nivel","Va con"], A(r.ganchos).map((x,k)=>["G"+(k+1), x.ve, x.dice, x.nivel, x.va_con])) : "";
     const tb = [["intro","Diálogo y ruta"], ...(r.meta ? [["meta","📣 Cómo pautar en Meta"]] : []), ...(A(r.imagenes_ad).length ? [["imagenes","🖼️ Anuncios de imagen"]] : []), ...(lpTab ? [["landing","🛒 Landing"]] : []), ["mercado","Mercado y números"], ...V.map((v,k)=>["v"+(k+1), `${S(v.id,"V"+(k+1))} · ${S(v.corto, v.nombre)}`]), ["audit","Auditoría"], ...(gan ? [["ganchos","Ganchos"]] : [])];
-    const sc = [["intro",intro], ...(r.meta ? [["meta",meta]] : []), ...(A(r.imagenes_ad).length ? [["imagenes",imgs]] : []), ["mercado",merc], ...vTabs.map((x,k)=>["v"+(k+1), x]), ["audit",aud], ...(gan ? [["ganchos",gan]] : [])];
+    const sc = [["intro",intro], ...(r.meta ? [["meta",meta]] : []), ...(A(r.imagenes_ad).length ? [["imagenes",imgs]] : []), ...(lpTab ? [["landing",lpTab]] : []), ["mercado",merc], ...vTabs.map((x,k)=>["v"+(k+1), x]), ["audit",aud], ...(gan ? [["ganchos",gan]] : [])];
     return `<div class="rm td"><header><h1>${esc(S(r.titulo, r.__input?.nombre || "Hoja de ruta"))}</h1><p>${esc(S(r.subtitulo))}</p>
 <nav class="tabs">${tb.map(([k,l],j)=>`<button data-k="${k}" class="${j===0?"on":""}">${esc(l)}</button>`).join("")}</nav></header>
 <main>${sc.map(([k,x],j)=>`<section class="tab${j===0?" on":""}" id="${k}">${x}</section>`).join("")}</main></div>`;
