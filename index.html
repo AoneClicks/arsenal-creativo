@@ -2431,6 +2431,8 @@ const LP_TEMAS = {
   lavanda: {n:"Calma lavanda", head:"Outfit", body:"Nunito Sans", gf:"Outfit:wght@700;800&family=Nunito+Sans:wght@500;700;800;900", bg:"#F7F6FC", bg2:"#ECE9F7", card:"#FFFFFF", line:"#DAD5EE", txt:"#1D1E33", muted:"#5D5F7A", head_c:"#11132B", acc:"#5B4BB7", acc2:"#C9BFF5", deep:"#11132B", deeptxt:"#E3E1F4", top:"#11132B"},
   durazno: {n:"Durazno natural", head:"DM Serif Display", body:"Nunito Sans", gf:"DM+Serif+Display&family=Nunito+Sans:wght@500;700;800;900", bg:"#FFF6EE", bg2:"#FCE9DC", card:"#FFFFFF", line:"#F0D7C4", txt:"#3A2318", muted:"#7A5A49", head_c:"#3A2318", acc:"#C0612B", acc2:"#F6C9A6", deep:"#3A2318", deeptxt:"#F8E8DC", top:"#3A2318"}
 };
+// WhatsApp de la tienda conectado a ChateaPro (pedido de Andrés, 2026-11-13): todas las landings mandan el pedido aquí.
+const LP_WA_TIENDA = "573238849321";
 const LP_DEPTOS = ["Amazonas","Antioquia","Arauca","Atlántico","Bogotá D.C.","Bolívar","Boyacá","Caldas","Caquetá","Casanare","Cauca","Cesar","Chocó","Córdoba","Cundinamarca","Guainía","Guaviare","Huila","La Guajira","Magdalena","Meta","Nariño","Norte de Santander","Putumayo","Quindío","Risaralda","San Andrés y Providencia","Santander","Sucre","Tolima","Valle del Cauca","Vaupés","Vichada"];
 const lpPrecio = (C, n) => C > 0 ? Math.floor((n * C + 75000) / 1000) * 1000 + 900 : 0;  // regla de Andrés: n × costo + $75.000
 function lpPacks(r){
