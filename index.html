@@ -2364,6 +2364,12 @@ Responde SOLO con un objeto JSON con esta forma exacta (todo en español):
  "reglas": [{"si":"condición medible con cifras","entonces":"acción"}],
  "errores": ["error común que hace perder ventas y cómo evitarlo"]
 }
+PARA QUE ESCRIBAN COMPRADORES Y NO CURIOSOS (tácticas de tiendas ganadoras):
+- Cada texto principal arranca con un gancho de una de estas familias: resultado, problema cotidiano, prueba social ("+500 hogares ya lo tienen" solo si es verdad; si no, "clientes en toda Colombia"), llamado a quién es, objeción respondida o comparación de valor. Cada copy usa una familia distinta.
+- El precio y lo que recibe exactamente van en las primeras 3 líneas del texto principal y en la bienvenida. El cierre pide una acción concreta: "Escríbenos tu ciudad y te confirmamos el envío".
+- Cifras y detalles concretos en vez de adjetivos.
+- Una de las preguntas frecuentes de la plantilla filtra intención de compra (por ejemplo "Quiero pedirlo, ¿llega a mi ciudad?").
+${wa ? `- En "reglas" incluye una que mida el costo por conversación CALIFICADA (la persona dio su ciudad o preguntó por el pedido), no solo el costo por conversación. Y en "alternativa" menciona que Meta reporta un costo por cliente potencial más bajo al optimizar clic a WhatsApp por clientes potenciales en vez de por conversaciones: vale la pena probarlo en un conjunto aparte cuando haya muchas conversaciones que no compran.\n` : ""}
 Reglas: exactamente 2 imagenes (anuncios de imagen 4:5 para poner en cada conjunto junto al video, así Meta tiene más opciones para encontrar compradores): IMG1 muestra el resultado más impactante del producto y IMG2 el combo u oferta con el producto real; el texto va encima después, nunca dentro de la imagen generada. Urgencia creíble en todos los textos: nunca "solo por hoy", "hoy" ni "quedan pocos"; usa "Promo de temporada" o "Hasta agotar existencias". Un objeto en copies por cada variación (${vs.map(v=>S(v.id)).join(", ")}), con nombre_anuncio como V1_muy_G0, V2_medio_G0, V3_no_G0. Entre 5 y 7 reglas de cortar o escalar con cifras${wa ? ` (costo por conversación máximo ${money(cierre)} y CPA máximo ${money(nums.maxCPA)})` : ` basadas en el CPA máximo de ${money(nums.maxCPA)}`}. 4 o 5 errores. Textos en español colombiano natural, sin prometer lo que el producto no hace y cumpliendo las políticas de publicidad de Meta (sin antes/después engañosos ni afirmaciones de salud).`;
 }
 
