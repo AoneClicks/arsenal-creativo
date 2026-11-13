@@ -2721,7 +2721,8 @@ function rmBody(r){
   const pb = (title, att, text) => { n++; return `<div class="pb"><div class="ph"><b>${esc(title)}</b><button class="cp" data-t="t${n}">Copiar</button></div>${att ? `<div class="att">${att}</div>` : ""}<pre id="t${n}">${esc(text)}</pre></div>`; };
   const table = (heads, rows) => `<div class="tw"><table><thead><tr>${heads.map(x=>`<th>${esc(x)}</th>`).join("")}</tr></thead><tbody>${rows.map(rw=>`<tr>${rw.map(c=>`<td>${esc(S(c))}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
   const att = (lbl, v) => `<span>${lbl}:</span> ${esc(v)}`;
-  const tabs = [["inicio","Inicio"], ...(r.meta ? [["meta","📣 Cómo pautar en Meta"]] : []), ...(A(r.imagenes_ad).length ? [["imagenes","🖼️ Anuncios de imagen"]] : []), ["mercado","Mercado y números"], ...vs.map((v,k)=>["v"+(k+1), `${S(v.id,"V"+(k+1))} · ${S(v.nombre)}`]), ["ganchos","Ganchos"]];
+  const lpTab = r.__input && !r.__radar ? lpTabHTML(r, pb) : "";
+  const tabs = [["inicio","Inicio"], ...(r.meta ? [["meta","📣 Cómo pautar en Meta"]] : []), ...(A(r.imagenes_ad).length ? [["imagenes","🖼️ Anuncios de imagen"]] : []), ...(lpTab ? [["landing","🛒 Landing"]] : []), ["mercado","Mercado y números"], ...vs.map((v,k)=>["v"+(k+1), `${S(v.id,"V"+(k+1))} · ${S(v.nombre)}`]), ["ganchos","Ganchos"]];
 
   let inicio = "";
   if(r.meta){ const rc = r.meta.recomendacion || {}; inicio += `<div class="card hero"><div class="big" style="font-size:1.6rem">📣</div><div><b>Cómo pautarlo en Meta:</b> objetivo <b>${esc(S(rc.objetivo))}</b>${rc.ubicacion ? ` · ${esc(S(rc.ubicacion))}` : ""}${rc.rendimiento ? ` · ${esc(S(rc.rendimiento))}` : ""}.<br>Todo campo por campo, con títulos y descripciones listos para copiar, en la pestaña <b>📣 Cómo pautar en Meta</b> de arriba.</div></div>`; }
