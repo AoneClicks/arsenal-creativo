@@ -3166,7 +3166,7 @@ $("#rmForm").addEventListener("submit", async e=>{
   $("#rmGen").disabled = true; $("#rmGen").textContent = "Generando…"; $("#rmStop").hidden = false; rmLog.textContent = "";
   i.modo = i.modoSel==="seguro" || (i.modoSel==="auto" && rmIsSensible(i)) ? "seguro" : "normal";
   if(i.modo==="seguro") return rmGenerarSeguro(i, file);
-  rmSteps([i.web ? "Investigando mercado y competencia en la web" : "Analizando mercado (sin web)", "Variación 1 · muy consciente", "Variación 2 · medianamente consciente", "Variación 3 · no consciente", "Meta Ads, textos y 4 anuncios de imagen", "Armando la hoja de ruta"]);
+  rmSteps([i.web ? "Investigando mercado y competencia en la web" : "Analizando mercado (sin web)", "Variación 1 · muy consciente", "Variación 2 · medianamente consciente", "Variación 3 · no consciente", "Meta Ads, textos, 4 anuncios de imagen y la landing de ventas", "Armando la hoja de ruta"]);
   rmStep(0,"run");
   try{
     const opts = {modelTier:tierUse, signal:ctrl.signal};
@@ -3186,7 +3186,10 @@ $("#rmForm").addEventListener("submit", async e=>{
     const metaJob = sample.json(rmMetaPrompt(i, r), {modelTier:tierUse, signal:ctrl.signal, cache:false})
       .then(d=>{ if(d && typeof d==="object" && (d.recomendacion || d.campana)){ r.meta = d; rmStep(4,"ok"); } else rmStep(4,"bad"); })
       .catch(err=>{ if(err?.code==="cancelled") throw err; rmStep(4,"bad"); rmLogLine(`Meta Ads: ${aiErr(err)}`); });
-    await Promise.all([metaJob, imgJob, ...vs.map((v,k)=>sample.json(rmVarPrompt(i, r, v), {modelTier:tierUse, signal:ctrl.signal, cache:false})
+    const lpJob = sample.json(rmLandingPrompt(i, r), {modelTier:tierUse, signal:ctrl.signal, cache:false})
+      .then(d=>{ if(d && d.titular){ r.landing = d; rmLogLine("Landing de ventas lista"); } })
+      .catch(err=>{ if(err?.code==="cancelled") throw err; rmLogLine(`Landing: ${aiErr(err)}`); });
+    await Promise.all([metaJob, imgJob, lpJob, ...vs.map((v,k)=>sample.json(rmVarPrompt(i, r, v), {modelTier:tierUse, signal:ctrl.signal, cache:false})
       .then(d=>{ if(d && typeof d==="object"){ v.__det = d; rmStep(k+1,"ok"); } else rmStep(k+1,"bad"); })
       .catch(err=>{ if(err?.code==="cancelled") throw err; rmStep(k+1,"bad"); rmLogLine(`${S(v.id)}: ${aiErr(err)}`); }))]);
     rmStep(5,"run");
@@ -3205,7 +3208,7 @@ async function rmGenerarSeguro(i, file){
   const ctrl = rmCtrl = new AbortController();
   const tierUse = tier==="quick" ? "default" : tier;
   $("#rmGen").disabled = true; $("#rmGen").textContent = "Generando…"; $("#rmStop").hidden = false; rmLog.textContent = "";
-  rmSteps(["Modo seguro (producto natural o de salud): " + (i.web ? "investigando mercado y competencia" : "analizando mercado sin web") + " y escribiendo el diálogo seguro", "Variación 1 · escena", "Variación 2 · escena", "Variación 3 · escena", "Meta Ads y 4 anuncios de imagen con lenguaje seguro", "Auditoría de Flow y Meta", "Armando la hoja de ruta"]);
+  rmSteps(["Modo seguro (producto natural o de salud): " + (i.web ? "investigando mercado y competencia" : "analizando mercado sin web") + " y escribiendo el diálogo seguro", "Variación 1 · escena", "Variación 2 · escena", "Variación 3 · escena", "Meta Ads, 4 anuncios de imagen y la landing con lenguaje seguro", "Auditoría de Flow y Meta", "Armando la hoja de ruta"]);
   rmStep(0,"run");
   try{
     const opts = {modelTier:tierUse, signal:ctrl.signal};
@@ -3224,7 +3227,10 @@ async function rmGenerarSeguro(i, file){
     const metaJob = sample.json(rmMetaPrompt(i, r), {modelTier:tierUse, signal:ctrl.signal, cache:false})
       .then(d=>{ if(d && typeof d==="object" && (d.recomendacion || d.campana)){ r.meta = d; rmStep(4,"ok"); } else rmStep(4,"bad"); })
       .catch(err=>{ if(err?.code==="cancelled") throw err; rmStep(4,"bad"); rmLogLine(`Meta Ads: ${aiErr(err)}`); });
-    await Promise.all([metaJob, imgJob, ...vs.map((v,k)=>sample.json(rmVarPromptSeguro(i, r, v), {modelTier:tierUse, signal:ctrl.signal, cache:false})
+    const lpJob = sample.json(rmLandingPrompt(i, r), {modelTier:tierUse, signal:ctrl.signal, cache:false})
+      .then(d=>{ if(d && d.titular){ r.landing = d; rmLogLine("Landing de ventas lista"); } })
+      .catch(err=>{ if(err?.code==="cancelled") throw err; rmLogLine(`Landing: ${aiErr(err)}`); });
+    await Promise.all([metaJob, imgJob, lpJob, ...vs.map((v,k)=>sample.json(rmVarPromptSeguro(i, r, v), {modelTier:tierUse, signal:ctrl.signal, cache:false})
       .then(d=>{ if(d && typeof d==="object" && A(d.tomas).length){ v.__det = d; rmStep(k+1,"ok"); } else rmStep(k+1,"bad"); })
       .catch(err=>{ if(err?.code==="cancelled") throw err; rmStep(k+1,"bad"); rmLogLine(`${S(v.id)}: ${aiErr(err)}`); }))]);
     rmStep(5,"run");
