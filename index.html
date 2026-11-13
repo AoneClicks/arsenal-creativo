@@ -3319,6 +3319,7 @@ initDb();
   const lim = await sample.limits().catch(()=>null);
   toolsOk = !!lim?.tools; imagesOk = !!lim?.images;
   try{ downloads = await window.claude?.use?.("downloads"); }catch{ downloads = null; }
+  try{ assetsCap = await window.claude?.use?.("assets"); }catch{ assetsCap = null; }
   try{ mcp = await window.claude?.use?.("mcp"); }catch{ mcp = null; }
   if(mcp && toolsOk){
     const lt = await mcp.listTools().catch(()=>null);
