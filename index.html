@@ -2478,7 +2478,7 @@ function lpFoto(f, fotos, cls){
 }
 function landingHTML(r, opt={}){
   const L = r.landing || {}, T = LP_TEMAS[L.tema] || (r.modo==="seguro" ? LP_TEMAS.fresco : LP_TEMAS.calido);
-  const fotos = opt.fotos || L.__fotos || {}, wa = S(opt.wa, S(L.__wa)).replace(/\D/g,""), pixel = S(opt.pixel, S(L.__pixel)).replace(/\D/g,"");
+  const fotos = opt.fotos || L.__fotos || {}, wa = (S(opt.wa, S(L.__wa)).replace(/\D/g,"") || LP_WA_TIENDA), pixel = S(opt.pixel, S(L.__pixel)).replace(/\D/g,"");
   const packs = lpPacks(r), sel = packs.length > 1 ? 1 : 0, P1 = packs[0];
   const marca = S(L.marca, S(r.__input?.nombre,"Producto")), cta = S(L.cta, "QUIERO EL MÍO");
   const seguro = r.modo==="seguro";
