@@ -2680,7 +2680,7 @@ ${prodLines}
         const env = inn ? INT : ENV;
         const txt = `[STYLE LOCK]: ${STY}${per ? `\n[SUBJECT]: ${S(anc.desc_en)}` : ""}
 [ACTION]: ${S(t.action_en)}${env ? `\n[ENVIRONMENT]: ${env}` : ""}
-[LIGHTING]: soft cinematic light with a clear mood, gentle rim light
+[LIGHTING]: ${pro ? "bright warm cheerful light, hopeful uplifting mood, gentle rim light" : "soft cinematic light with a clear mood, gentle rim light"}${per && pro ? "\n[MOOD]: genuine relieved smile, energetic and confident, warm and trustworthy" : ""}
 [CAMERA]: ${S(t.camera_en, "medium shot")}
 [ASPECT]: 9:16 vertical
 [REFERENCE]: ${ref || "character anchor A1 (keep face, hair and clothing identical)"}${pro ? "\n" + prodLines : ""}
