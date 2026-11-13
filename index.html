@@ -3266,14 +3266,25 @@ function rmCaps(){
   const w = $("#rmWeb"), ok = webOk && toolsOk; w.disabled = !ok; if(!ok) w.checked = false;
   $("#rmWebNote").textContent = ok ? "Competencia y precios reales" : "Solo en la app de escritorio de Claude";
 }
+// Las hojas de ruta se escuchan en vivo: si Claude agrega o completa una, el panel la muestra sin volver a abrirlo.
+let rmUnsub = null;
 async function rmLoadCloud(){
   if(!cloud) return;
+  const apply = s => {
+    if(s.empty){ if(!rmUnsub) data.roadmaps.forEach(it=>enqueue("rm_"+it.id, ()=>db.collection("roadmaps").doc(it.id).set(it))); renderRoadmaps(); return; }
+    const openId = rmCurrent ? data.roadmaps.find(x=>x.r===rmCurrent)?.id : null;
+    data.roadmaps = rmFresh(s.docs.map(d=>({...d.data(), id:d.id})).filter(x=>!RM_BORRADAS.includes(x.id)));
+    rmPersistLocal(); renderRoadmaps();
+    if(openId && !$("#rmView").hidden){
+      const nx = data.roadmaps.find(x=>x.id===openId);
+      if(nx && JSON.stringify(nx.r) !== JSON.stringify(rmCurrent)){ const tab = $("#rmHost").shadowRoot?.querySelector("nav.tabs button.on")?.dataset.k; rmShow(nx.r); if(tab) $("#rmHost").shadowRoot?.querySelector(`nav.tabs button[data-k="${tab}"]`)?.click(); toast("Esta hoja de ruta se actualizó."); }
+    }
+  };
   try{
-    const s = await db.collection("roadmaps").orderBy("at","desc").limit(30).get();
-    if(!s.empty){ data.roadmaps = rmFresh(s.docs.map(d=>({...d.data(), id:d.id}))); rmPersistLocal(); }
-    else data.roadmaps.forEach(it=>enqueue("rm_"+it.id, ()=>db.collection("roadmaps").doc(it.id).set(it)));
-    renderRoadmaps();
-  }catch{}
+    const q = db.collection("roadmaps").orderBy("at","desc").limit(30);
+    if(typeof q.onSnapshot === "function") rmUnsub = q.onSnapshot(apply, ()=>{});
+    else apply(await q.get());
+  }catch{ try{ apply(await db.collection("roadmaps").orderBy("at","desc").limit(30).get()); }catch{} }
 }
 renderRoadmaps();
 
