@@ -3005,7 +3005,7 @@ function rmShow(r){
     catch{ const rg=document.createRange(); rg.selectNodeContents(pre); const s=getSelection(); s.removeAllRanges(); s.addRange(rg); b.textContent="Ctrl+C"; }
     setTimeout(()=>{ b.textContent="Copiar"; b.classList.remove("ok"); }, 1600);
   }));
-  lpWire(root, r);
+  try{ lpWire(root, r); }catch(e){ const c = root.querySelector(".lp-ctrl"); if(c) c.textContent = "Los controles de la landing no cargaron: " + S(e?.message||e); }
   $("#rmViewTitle").textContent = S(r.titulo, "Hoja de ruta");
   $("#rmDownload").hidden = false; $("#rmToCalc").hidden = !!r.__radar;
   $("#rmView").hidden = false; reveal("rmView");
