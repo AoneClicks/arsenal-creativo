@@ -2027,6 +2027,22 @@ const PERSON_LOCK = "Vertical video shot on an iPhone 17 Pro Max, crisp and clea
 const EXCL = "no text, no logos, no watermarks, no brand names, no extra hands, no distorted faces, no CGI look";
 const EXCL_P = EXCL + ", no plastic skin, no beauty filter, no studio lighting";
 
+// Dirección de emoción (pedido de Andrés, 2026-11-12): los videos y avatares se veían tristes o planos.
+// Cada anuncio debe transmitir la emoción que corresponde al producto, sin dejar de verse real y confiable.
+const RM_ENERGIA = `DIRECCIÓN DE EMOCIÓN Y ENERGÍA (obligatoria, el cliente se quejó de que los avatares y los videos se veían y se oían tristes):
+- La emoción va acorde al producto. Ejemplos: luces o decoración = familia alegre armando e instalando juntos, risas y abrazo cuando se prenden; producto que arregla algo (pintura, sellador, herramienta) = resultado agradable y llamativo, y el avatar alegre y dinámico enseñando cómo se usa paso a paso; regalo = sorpresa y emoción de quien lo recibe; cocina = antojo y familia disfrutando en la mesa; mascotas = ternura y juego.
+- Avatares con energía natural: sonrisa genuina (con los ojos), gestos vivos, postura abierta, se mueven y le muestran el producto a la cámara como si se lo recomendaran a un amigo. Nunca caras serias, cansadas, apagadas ni posados de catálogo. Que se vean reales y confiables, no actores exagerados.
+- Si hay un problema al inicio, se muestra con una reacción humana creíble (fastidio, cara de "otra vez no", risa nerviosa), y desde el momento del producto la energía sube: alivio, sonrisa y satisfacción.
+- LOS PRIMEROS 3 SEGUNDOS conectan emocionalmente: una cara con emoción real (sorpresa, risa, asombro, alivio) o un resultado visual que da gusto ver, más una frase que suena a conversación. Nada de arranques lentos, fondos vacíos ni producto quieto.
+- Sonido: música alegre y con ritmo acorde al producto (navideña alegre, pop latino suave, acústica animada), nunca melancólica ni lenta. Voz en off cálida y sonriente (que se note la sonrisa al hablar), ritmo dinámico, entonación que sube en el gancho y en el cierre. Efectos que celebran el resultado (clic, brillo, risas de familia, "wow").
+- Escenas luminosas y con color: luz cálida de día o noches festivas bien iluminadas, casas colombianas reales con vida (gente, plantas, detalles), nunca escenas grises o vacías.`;
+const RM_ENERGIA_SEG = `DIRECCIÓN DE EMOCIÓN (obligatoria, el cliente se quejó de que los avatares se veían tristes):
+- Arco emocional en 3 tiempos: 1) PROBLEMA: el avatar se ve con la molestia de forma creíble (cansado, incómodo, se toca la zona con la mano, se detiene, cara de fastidio), sin exagerar el sufrimiento ni mostrar el cuerpo por dentro; 2) DESCUBRIMIENTO: curiosidad y esperanza cuando conoce el producto; 3) RESULTADO: alivio, sonrisa genuina, se mueve con energía, vuelve a hacer lo que le gusta (bailar, jugar con los nietos, caminar, cocinar) y lo recomienda a cámara con confianza, como a un amigo.
+- Desde la frase del producto hasta el cierre, el avatar está contento, animado y transmite confianza. El cierre siempre es feliz y recomendando.
+- Los primeros 3 segundos conectan: una situación cotidiana que el público reconoce al instante (se levanta de la silla y se toca la espalda, no puede abrir un frasco, se despierta cansado) con una expresión humana real.
+- En los campos _en describe la molestia con palabras suaves que pasan el filtro: "discomfort", "tired", "tense", "rubs her lower back", "frowns slightly". Nunca "pain", "sick", "suffering", "injury".
+- Sonido: música que arranca suave en el problema y sube a alegre y esperanzadora desde el producto. Voz cálida y cercana que se vuelve más animada y sonriente en el resultado.`;
+
 function rmMainPrompt(i){
   return `Eres estratega de dropshipping con pago contraentrega en ${i.pais} y director creativo de anuncios en video hechos con IA (imágenes y clips en Google Flow, voz en Fish Audio o ElevenLabs, montaje en CapCut).
 
