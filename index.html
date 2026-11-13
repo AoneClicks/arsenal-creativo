@@ -3008,6 +3008,104 @@ function rmShow(r){
   $("#rmDownload").hidden = false; $("#rmToCalc").hidden = !!r.__radar;
   $("#rmView").hidden = false; reveal("rmView");
 }
+/* ---------- Controles de la landing en el panel ---------- */
+let assetsCap = null;
+const lpSlug = r => norm(S(r.landing?.marca, r.__input?.nombre)).replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,40) || "producto";
+const LP_BASE = "https://aoneclicks.github.io/arsenal-creativo/l/";
+function rmUpdate(r){
+  const it = data.roadmaps.find(x=>x.r===r); if(!it) return;
+  rmPersistLocal();
+  if(cloud && JSON.stringify(it).length < 240000) enqueue("rm_"+it.id, ()=>db.collection("roadmaps").doc(it.id).set(it));
+}
+const blobToDataURL = b => new Promise((ok, ko)=>{ const f = new FileReader(); f.onload = ()=>ok(f.result); f.onerror = ko; f.readAsDataURL(b); });
+async function lpShrink(file){
+  const img = await new Promise((ok, ko)=>{ const u = URL.createObjectURL(file), im = new Image(); im.onload = ()=>{ URL.revokeObjectURL(u); ok(im); }; im.onerror = ko; im.src = u; });
+  const max = 1100, k = Math.min(1, max / Math.max(img.width, img.height));
+  const c = document.createElement("canvas"); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+  c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+  return await new Promise(ok=>c.toBlob(ok, "image/jpeg", .84));
+}
+// La landing descargable lleva las fotos dentro del archivo (no depende del panel).
+async function lpStandalone(r){
+  let html = landingHTML(r);
+  for(const [slot, src] of Object.entries(r.landing?.__fotos || {})){
+    if(!/^\/_blob\//.test(S(src))) continue;
+    try{ const d = await blobToDataURL(await (await fetch(src)).blob()); html = html.split(`"${src}"`).join(`"${d}"`); }catch{}
+  }
+  return html;
+}
+function lpWire(root, r){
+  const gen = root.querySelector(".lp-gen");
+  if(gen) gen.addEventListener("click", async ()=>{
+    if(!sample){ toast(aiErr({code:"no_ai"})); return; }
+    gen.disabled = true; gen.textContent = "Armando la landing…";
+    try{ const d = await sample.json(rmLandingPrompt(r.__input || {}, r), {modelTier: tier==="quick" ? "default" : tier, cache:false});
+      if(!d || !d.titular) throw {code:"invalid_json"};
+      r.landing = d; rmUpdate(r); rmShow(r); root.querySelector('nav.tabs button[data-k="landing"]')?.click(); }
+    catch(e){ gen.disabled = false; gen.textContent = "🛒 Generar la landing"; toast(aiErr(e)); }
+  });
+  const ctrl = root.querySelector(".lp-ctrl"); if(!ctrl || !r.landing) return;
+  const L = r.landing; L.__fotos = L.__fotos || {};
+  if(!L.__wa) L.__wa = S(store.get("ac.lwa", ""));
+  if(!L.__pixel) L.__pixel = S(store.get("ac.lpixel", ""));
+  const slug = lpSlug(r), canPub = !!(cloud && window.claude);
+  ctrl.innerHTML = `<label>WhatsApp que recibe los pedidos (con 57, solo números)<input class="lp-wa" inputmode="numeric" placeholder="573001234567" value="${esc(L.__wa)}"></label>
+<label>ID del Pixel de Meta (opcional: mide visitas y pedidos para optimizar)<input class="lp-px" inputmode="numeric" placeholder="123456789012345" value="${esc(L.__pixel)}"></label>
+<div class="row"><button type="button" class="pri lp-dl">⬇️ Descargar landing (HTML)</button>${canPub ? `<button type="button" class="lp-pub">🚀 Publicar en GitHub</button>` : ""}</div>
+<div class="st lp-st">${canPub ? `Cuando te guste, toca <b>Publicar en GitHub</b>. Solo con tu autorización Claude la sube a <b>${esc(LP_BASE + slug)}/</b> para que la uses en Meta.` : "Para publicarla en GitHub ábrela desde el panel de Claude. Aquí puedes descargarla en HTML."}</div>`;
+  const frame = root.querySelector(".lp-frame");
+  const refresh = ()=>{ if(frame) frame.srcdoc = landingHTML(r); };
+  ctrl.querySelector(".lp-wa").addEventListener("change", e=>{ L.__wa = e.target.value.replace(/\D/g,""); e.target.value = L.__wa; store.set("ac.lwa", L.__wa); rmUpdate(r); refresh(); });
+  ctrl.querySelector(".lp-px").addEventListener("change", e=>{ L.__pixel = e.target.value.replace(/\D/g,""); e.target.value = L.__pixel; store.set("ac.lpixel", L.__pixel); rmUpdate(r); refresh(); });
+  ctrl.querySelector(".lp-dl").addEventListener("click", async e=>{
+    const b = e.currentTarget, name = "Landing_" + slug + ".html";
+    try{ const blob = new Blob([await lpStandalone(r)], {type:"text/html"});
+      if(downloads) await downloads.save({filename:name, data:blob});
+      else { const u = URL.createObjectURL(blob), l = document.createElement("a"); l.href = u; l.download = name; document.body.appendChild(l); l.click(); l.remove(); setTimeout(()=>URL.revokeObjectURL(u), 4000); }
+      b.textContent = "Descargada"; }
+    catch{ b.textContent = "No se descargó"; }
+    setTimeout(()=>b.textContent = "⬇️ Descargar landing (HTML)", 2000);
+  });
+  const st = ctrl.querySelector(".lp-st"), pub = ctrl.querySelector(".lp-pub");
+  const paintEstado = d => {
+    if(!d) return;
+    if(d.estado==="publicada") st.innerHTML = `✅ Publicada: <a href="${esc(S(d.url))}" target="_blank" rel="noopener">${esc(S(d.url))}</a>. Usa ese link en tu anuncio de Meta. Si cambias algo, vuelve a tocar Publicar.`;
+    else if(d.estado==="pendiente") st.innerHTML = `⏳ Autorizaste publicarla (${esc(fmtDate(d.at))}). Claude la sube a GitHub en la próxima revisión, o dile en el chat: <b>"publica la landing ${esc(S(L.marca))}"</b>.`;
+  };
+  if(canPub){
+    db.collection("landings").doc(slug).get().then(s=>{ if(s.exists) paintEstado(s.data()); }).catch(()=>{});
+    let armed = false;
+    pub.addEventListener("click", async ()=>{
+      if(!L.__wa || L.__wa.length < 10){ st.textContent = "Primero escribe el WhatsApp que recibe los pedidos."; return; }
+      if(Object.values(L.__fotos).some(v=>/^data:/.test(S(v)))){ st.textContent = "Hay fotos que no quedaron guardadas en el panel. Súbelas otra vez desde el panel de Claude antes de publicar."; return; }
+      if(!armed){ armed = true; pub.textContent = "Toca otra vez para confirmar"; st.innerHTML = `¿Publicar <b>${esc(S(L.marca))}</b> en <b>${esc(LP_BASE + slug)}/</b>? ${Object.keys(L.__fotos).length < lpSlots(r).length ? "⚠️ Aún faltan fotos: saldrán recuadros en su lugar. " : ""}Toca otra vez para confirmar.`; setTimeout(()=>{ if(armed){ armed = false; pub.textContent = "🚀 Publicar en GitHub"; } }, 8000); return; }
+      armed = false; pub.disabled = true; pub.textContent = "Enviando…";
+      const doc = {slug, nombre:S(r.__input?.nombre), marca:S(L.marca), estado:"pendiente", at:Date.now(), wa:L.__wa, pixel:L.__pixel, fotos:L.__fotos, url:LP_BASE + slug + "/", html:landingHTML(r)};
+      try{ await db.collection("landings").doc(slug).set(doc); paintEstado(doc); pub.textContent = "🚀 Publicar en GitHub"; pub.disabled = false; toast("Listo: Claude publicará la landing en GitHub."); }
+      catch(e){ pub.disabled = false; pub.textContent = "🚀 Publicar en GitHub"; st.textContent = "No se pudo guardar el pedido de publicación: " + aiErr(e); }
+    });
+  }
+  root.querySelectorAll(".lp-up").forEach(sp=>{
+    const slot = sp.dataset.slot, cur = L.__fotos[slot];
+    sp.innerHTML = `${cur ? `<img src="${esc(cur)}" alt="">` : ""}<button type="button">${cur ? "Cambiar foto" : "Subir foto"}</button><input type="file" accept="image/*" hidden>`;
+    const inp = sp.querySelector("input"), btn = sp.querySelector("button");
+    btn.addEventListener("click", ()=>inp.click());
+    inp.addEventListener("change", async ()=>{
+      const f = inp.files?.[0]; if(!f) return;
+      btn.textContent = "Subiendo…"; btn.disabled = true;
+      try{
+        const small = await lpShrink(f);
+        let src;
+        if(assetsCap){ const up = await assetsCap.upload(small, {type:"image/jpeg"}); src = "/_blob/" + up.id; }
+        else src = await blobToDataURL(small);
+        L.__fotos[slot] = src; rmUpdate(r); refresh();
+        sp.querySelector("img")?.remove(); sp.insertAdjacentHTML("afterbegin", `<img src="${esc(src)}" alt="">`);
+        btn.textContent = "Cambiar foto";
+      }catch(e){ btn.textContent = "No se subió · reintenta"; }
+      btn.disabled = false; inp.value = "";
+    });
+  });
+}
 $("#rmClose").addEventListener("click", ()=>{ $("#rmView").hidden = true; rmCurrent = null; });
 $("#rmToCalc").addEventListener("click", ()=>{ const x = data.roadmaps.find(y=>y.r===rmCurrent); if(x) calcFromRoadmap(x); });
 $("#rmDownload").addEventListener("click", async ()=>{
