@@ -2359,9 +2359,10 @@ function rmPromptP0(p){ return `[STYLE LOCK]: Clean e-commerce product reference
 [EXCLUDE]: no text, no logos, no watermarks, no hands, no people`; }
 function rmPromptA1(a){ return `[STYLE LOCK]: ${PERSON_LOCK}
 [SUBJECT]: ${S(a?.desc_en)}
-[ACTION]: looking at camera with a warm smile, hands together
+[ACTION]: looking at camera with a big genuine smile, relaxed open posture, one hand in a friendly welcoming gesture
+[MOOD]: ${MOOD_PERSONA}
 [ENVIRONMENT]: ${S(a?.ambiente_en,"a cozy Colombian living room")}
-[LIGHTING]: warm natural light
+[LIGHTING]: bright warm natural light
 [CAMERA]: medium shot
 [ASPECT]: 9:16 vertical
 [EXCLUDE]: ${EXCL}, no plastic skin, no beauty filter`; }
