@@ -2412,6 +2412,822 @@ function rmPromptC(t, r){ const c = t.clip || {}; const mood = S(c.emocion_en, S
 [CONTINUITY]: ${S(c.continuity_en)}
 [PRODUCT]: ${S(r.producto?.motion_lock_en)}`; }
 
+/* ================= Landing de ventas (estructura copiada de las landings de Lo Máximo) =================
+   Analizadas el 2026-11-13: AMUA (gotas), PARRANDERO (Papá Noel musical), MEDULUZ (medusas solares),
+   TINNIDROP (spray oído) y REVELA (enjuague). Dos familias:
+   - normal/decoración: topbar → marca → galería → caja de compra → cinta → (cuenta regresiva) → cómo funciona →
+     escena emocional → dónde ponerlo → la diferencia (tabla) → así lo vas a recibir → regalo → lo que te llega →
+     oferta en paquetes → preguntas → cierre.
+   - salud/cuidado: topbar → marca → galería → caja de compra con pregunta-gancho → cinta → el problema →
+     lo que ya probaste → así se usa → lo que dice la etiqueta → no es para todos / es para ti si → para quién →
+     oferta 1-2-3 → preguntas (incluye "¿cura?") → cierre → aviso legal.
+   El pedido llega a WhatsApp con el formulario de siempre (cantidad, celular, nombre, departamento, ciudad,
+   dirección, barrio). */
+const LP_TEMAS = {
+  calido:  {n:"Cálido navideño", head:"Fraunces", body:"DM Sans", gf:"Fraunces:opsz,wght@9..144,700;9..144,800&family=DM+Sans:wght@500;700;800;900", bg:"#FBF3E4", bg2:"#F3E6CC", card:"#FFFFFF", line:"#E6D6B8", txt:"#2A1A12", muted:"#6B5546", head_c:"#2A1A12", acc:"#B5172E", acc2:"#F4C46A", deep:"#4A0D18", deeptxt:"#F7E9D7", top:"#17553A"},
+  noche:   {n:"Noche brillante", head:"Outfit", body:"Nunito Sans", gf:"Outfit:wght@700;800&family=Nunito+Sans:wght@500;700;800;900", bg:"#131937", bg2:"#0B1026", card:"#1C2350", line:"#2A3366", txt:"#E7EAF6", muted:"#A9B0CF", head_c:"#FFFFFF", acc:"#7CF3E0", acc2:"#C77DFF", deep:"#0B1026", deeptxt:"#E7EAF6", top:"#0B1026"},
+  fresco:  {n:"Fresco y limpio", head:"Outfit", body:"Nunito Sans", gf:"Outfit:wght@700;800&family=Nunito+Sans:wght@500;700;800;900", bg:"#F3F5F6", bg2:"#E4EBEC", card:"#FFFFFF", line:"#D3DBDE", txt:"#1E2428", muted:"#56616A", head_c:"#1F2529", acc:"#12766F", acc2:"#8FDCD5", deep:"#1F2529", deeptxt:"#DCE3E5", top:"#161B1E"},
+  lavanda: {n:"Calma lavanda", head:"Outfit", body:"Nunito Sans", gf:"Outfit:wght@700;800&family=Nunito+Sans:wght@500;700;800;900", bg:"#F7F6FC", bg2:"#ECE9F7", card:"#FFFFFF", line:"#DAD5EE", txt:"#1D1E33", muted:"#5D5F7A", head_c:"#11132B", acc:"#5B4BB7", acc2:"#C9BFF5", deep:"#11132B", deeptxt:"#E3E1F4", top:"#11132B"},
+  durazno: {n:"Durazno natural", head:"DM Serif Display", body:"Nunito Sans", gf:"DM+Serif+Display&family=Nunito+Sans:wght@500;700;800;900", bg:"#FFF6EE", bg2:"#FCE9DC", card:"#FFFFFF", line:"#F0D7C4", txt:"#3A2318", muted:"#7A5A49", head_c:"#3A2318", acc:"#C0612B", acc2:"#F6C9A6", deep:"#3A2318", deeptxt:"#F8E8DC", top:"#3A2318"}
+};
+const LP_DEPTOS = ["Amazonas","Antioquia","Arauca","Atlántico","Bogotá D.C.","Bolívar","Boyacá","Caldas","Caquetá","Casanare","Cauca","Cesar","Chocó","Córdoba","Cundinamarca","Guainía","Guaviare","Huila","La Guajira","Magdalena","Meta","Nariño","Norte de Santander","Putumayo","Quindío","Risaralda","San Andrés y Providencia","Santander","Sucre","Tolima","Valle del Cauca","Vaupés","Vichada"];
+const lpPrecio = (C, n) => C > 0 ? Math.floor((n * C + 75000) / 1000) * 1000 + 900 : 0;  // regla de Andrés: n × costo + $75.000
+function lpPacks(r){
+  const C = +r.__input?.costo || 0, L = r.landing || {}, P1 = +r.__precio || lpPrecio(C, 1);
+  const base = A(L.packs).length ? A(L.packs).slice(0,3) : [{n:1,titulo:"",sub:"Para empezar"},{n:2,titulo:"",sub:"El más pedido",badge:"MÁS PEDIDO"},{n:3,titulo:"",sub:"Mejor precio",badge:"MEJOR PRECIO"}];
+  return base.map((p,k)=>{ const n = Math.max(1, Math.round(+p.n || k+1)); const precio = n===1 ? P1 : (lpPrecio(C, n) || P1*n); const antes = n>1 ? P1*n : 0;
+    return {n, titulo:S(p.titulo, n + (n===1 ? " unidad" : " unidades")), sub:S(p.sub), badge:S(p.badge), precio, antes, ahorro: antes ? antes - precio : 0, cu: Math.round(precio / n)}; });
+}
+function rmLandingPrompt(i, r){
+  const seguro = r.modo==="seguro", p = r.producto || {}, packs = lpPacks({...r, landing:{}});
+  return `Eres el mejor diseñador de landings de venta contraentrega de ${i.pais}. Vas a escribir la landing de un solo producto copiando la ESTRUCTURA y el ESTILO de las landings ganadoras de la tienda Lo Máximo (AMUA, Parrandero, Meduluz, TinniDrop, Revela). Cada pieza de texto es corta, concreta, en español colombiano natural, con emojis medidos.
+PRODUCTO: ${i.nombre}. Verdad del producto: ${i.hace}. Se ve como (inglés): ${S(p.subject_en)}.
+Regla del producto: ${S(p.regla)}. Temporada: ${i.temporada || "ninguna"}.
+Precio 1 unidad: ${money(packs[0].precio)}. 2 unidades: ${money(packs[1].precio)}. 3 unidades: ${money(packs[2].precio)}. Envío gratis y pago contra entrega en ${i.pais}. Llega en 2 a 5 días hábiles.
+Lo que funciona del anuncio ganador: ${S(r.ganador?.por_que)}. Ganchos de los videos: ${A(r.ganchos).map(g=>S(g.dice)).filter(Boolean).slice(0,5).join(" | ")}.
+TIPO: ${seguro ? "PRODUCTO NATURAL, DE SALUD O CUIDADO PERSONAL (familia salud: como TinniDrop, Revela y AMUA)" : "PRODUCTO NORMAL (familia normal: como Parrandero y Meduluz)"}.
+
+ESTRUCTURA OBLIGATORIA (en este orden; el sistema arma el diseño, tú escribes el contenido):
+${seguro ? `1. Caja de compra: kicker ("SPRAY PARA EL OÍDO · 60 ML"), titular con la marca y la promesa segura, pregunta-gancho que describe la situación ("¿El pitido empieza justo cuando todo queda en silencio?"), 4 beneficios con lenguaje seguro.
+2. Secciones, en este orden: "problema" (por qué es peor / qué le pasa a quien lo vive, 2 ítems), "ya_probaste" (lo que la gente ya probó y por qué no basta), "como_se_usa" (3 pasos cortos), "etiqueta" (solo si conoces ingredientes reales de la etiqueta; si no, omítela), "no_es_para" (quién NO debe usarlo con ✕ + "es para ti si" con ✓), "para_quien" (para qué momentos, 2 fotos), "galeria_uso" (así llega a tu casa, 4 a 6 fotos).
+3. Preguntas frecuentes: incluye "¿Cura…?" respondiendo con honestidad ("No. Es un producto de cuidado que ayuda a…"), "¿Quién no debe usarlo?", "¿Cómo se usa?", "¿En cuánto tiempo se nota?", "¿Cómo pago y cuánto tarda?".
+4. Aviso legal: "No es un medicamento ni reemplaza la consulta médica. Los resultados varían según cada persona. Las fotos son de referencia."
+LENGUAJE SEGURO OBLIGATORIO: nada de "cura", "elimina", "desaparece", "100 %", "garantizado", "milagro", "sin efectos secundarios", ni simular médicos. Usa "ayuda a", "apoya", "rutina de cuidado".` : `1. Caja de compra: kicker ("MEDULUZ · MEDUSAS SOLARES DE FIBRA ÓPTICA"), subtítulo corto de qué es, titular emocional ("Este diciembre, la casa que todos miran es la tuya"), 4 beneficios concretos.
+2. Secciones, en este orden: ${i.temporada ? `"urgencia" (cuenta regresiva honesta de la temporada: fecha real y por qué pedir ya, sin inventar escasez), ` : ""}"como_funciona" (3 pasos con emoji + 1 video o foto), "escena" (lo que va a pasar: la emoción, una frase entre comillas de lo que dirán los demás, 1 foto), "donde" (dónde ponerlo o usarlo, 4 fotos con nombre), "comparacion" (la alternativa de siempre vs el producto, 5 filas con emoji, y un párrafo de por qué dejar la alternativa), "galeria_uso" ("así lo vas a recibir", 6 a 10 fotos con títulos tipo "📦 Recién llegado", "😍 La primera noche"), ${i.temporada ? `"regalo" (para quién regalarlo, 4 chips), ` : ""}"que_trae" (lo que te llega, 4 a 6 ítems con emoji y una línea).
+3. Preguntas frecuentes: 5 o 6 (¿De verdad hace X?, ¿Cómo funciona?, ¿Me llega a tiempo?, ¿Sirve para regalar? si aplica, ¿Cómo pago?).
+4. Aviso legal corto de uso ("Uso decorativo en interiores", "Las fotos son de referencia").`}
+EMOCIÓN: los textos transmiten la misma energía de las hojas de ruta: alegre, cercana y confiable${seguro ? "; el problema se describe con empatía y el resultado con alivio y alegría" : "; el producto se ve como el protagonista de un momento feliz"}.
+FOTOS: cada foto lleva "prompt_en": un prompt en inglés para generarla en Google Flow con la foto real del producto como referencia (escena colombiana real, luz natural, personas adultas alegres si salen, nunca texto en la imagen), y "alt" en español. La galería principal lleva 5 fotos: 1) el producto protagonista en fondo limpio, 2) el producto funcionando, 3) una escena de uso con persona feliz, 4) una comparación sin vs con (dividida), 5) detalle de lo que trae.
+Escoge el tema visual que mejor va con el producto: "calido" (navidad, regalos, hogar cálido), "noche" (luces, cosas que brillan), "fresco" (limpieza, higiene, tecnología), "lavanda" (descanso, calma, cuidado), "durazno" (belleza, cuidado natural, mujer).
+Inventa una MARCA corta y pegajosa en mayúsculas si el producto no trae una (como MEDULUZ, REVELA, TINNIDROP), sin usar marcas registradas de otros.
+
+Responde SOLO con un objeto JSON con esta forma:
+{"tema":"calido","marca":"MEDULUZ","nombre_largo":"Medusas solares de fibra óptica (caja x 2)","kicker":"","titular":"usa *asteriscos* para resaltar 1 o 2 palabras","pregunta":"${seguro ? "pregunta-gancho" : "subtítulo de qué es"}","beneficios":["",""],"topbar":["PAGO CONTRA ENTREGA","ENVÍO GRATIS A TODA COLOMBIA","LLEGA EN 2 A 5 DÍAS HÁBILES","PRODUCTO SELLADO","una línea propia del producto"],"ticker":[{"e":"☀️","t":"Se cargan con el sol"}],"cta":"QUIERO MIS MEDUSAS","galeria":[{"id":"g1","alt":"","prompt_en":"","e":"🪼"}],"secciones":[{"tipo":"como_funciona","eyebrow":"ASÍ FUNCIONAN","titulo":"Las clavas una vez. *Brillan todas las noches*","lead":"una línea","items":[{"e":"☀️","t":"De día","d":"El panel se carga con el sol"}],"fotos":[{"id":"s1a","alt":"","prompt_en":""}],"cita":"solo en escena","parrafo":"solo en comparacion","comp":{"izq":"Luces de cable","der":"Meduluz"},"si":["solo en no_es_para: es para ti si…"]}],"packs":[{"n":1,"titulo":"1 caja","sub":"Para un rincón","badge":""},{"n":2,"titulo":"2 cajas","sub":"Para todo el antejardín","badge":"LA MÁS PEDIDA"},{"n":3,"titulo":"3 cajas","sub":"Jardín, camino y regalo","badge":"MEJOR PRECIO"}],"oferta_titulo":"Ilumina tu casa antes de la novena","faq":[{"q":"","a":""}],"cierre":{"titulo":"Que este diciembre tu casa brille todas las noches","sub":"Pídelas hoy y paga cuando te lleguen."},"legal":""}
+Reglas: 8 chips en ticker (incluye 💵 Pagas al recibir y 🚚 Envío gratis). En "comparacion" items son las filas (e y t) y comp trae los dos nombres. En "no_es_para" items son los ✕ y "si" los ✓. Ninguna foto ni texto promete algo que el producto no hace. No inventes testimonios con nombre ni cifras de ventas.`;
+}
+
+/* ---------- Plantilla HTML ---------- */
+const lpEm = s => esc(S(s)).replace(/\*(.+?)\*/g, "<em>$1</em>");
+function lpFoto(f, fotos, cls){
+  const src = fotos?.[S(f?.id)];
+  if(src) return `<img class="${cls||""}" src="${esc(src)}" alt="${esc(S(f?.alt))}" loading="lazy">`;
+  return `<div class="ph ${cls||""}"><span>${esc(S(f?.e,"📷"))}</span><small>Foto: ${esc(S(f?.alt,"del producto"))}</small></div>`;
+}
+function landingHTML(r, opt={}){
+  const L = r.landing || {}, T = LP_TEMAS[L.tema] || (r.modo==="seguro" ? LP_TEMAS.fresco : LP_TEMAS.calido);
+  const fotos = opt.fotos || L.__fotos || {}, wa = S(opt.wa, S(L.__wa)).replace(/\D/g,""), pixel = S(opt.pixel, S(L.__pixel)).replace(/\D/g,"");
+  const packs = lpPacks(r), sel = packs.length > 1 ? 1 : 0, P1 = packs[0];
+  const marca = S(L.marca, S(r.__input?.nombre,"Producto")), cta = S(L.cta, "QUIERO EL MÍO");
+  const seguro = r.modo==="seguro";
+  const G = A(L.galeria).slice(0,6);
+  const sec = (cls, inner) => `<section class="sec ${cls}"><div class="wrap">${inner}</div></section>`;
+  const head = s => `${s.eyebrow ? `<p class="eyebrow">${esc(S(s.eyebrow))}</p>` : ""}<h2>${lpEm(s.titulo)}</h2>${s.lead ? `<p class="lead">${lpEm(s.lead)}</p>` : ""}`;
+  const items = s => A(s.items).length ? `<div class="cards">${A(s.items).map(x=>`<div class="card"><b>${esc(S(x.e))} ${esc(S(x.t))}</b>${x.d ? `<span>${esc(S(x.d))}</span>` : ""}</div>`).join("")}</div>` : "";
+  const fotosGrid = (s, cls) => A(s.fotos).length ? `<div class="${cls||"ugrid"}">${A(s.fotos).map(f=>`<figure>${lpFoto(f, fotos)}${f.alt && cls!=="one" ? `<figcaption>${esc(S(f.alt))}</figcaption>` : ""}</figure>`).join("")}</div>` : "";
+  let k = 0; const alt = () => (k++ % 2 ? "b2" : "b1");
+  const secciones = A(L.secciones).map(s=>{
+    const t = S(s.tipo);
+    if(t==="comparacion"){ const c = s.comp || {}; return sec(alt(), head(s) + `<div class="cmp"><div class="ch"></div><div class="ch old">${esc(S(c.izq,"Lo de siempre"))}</div><div class="ch me">${esc(S(c.der, marca))}</div>${A(s.items).map(x=>`<div class="cr">${esc(S(x.e))} ${esc(S(x.t))}</div><div class="cx">✗</div><div class="cv">✓</div>`).join("")}</div>${s.parrafo ? `<p class="note">${esc(S(s.parrafo))}</p>` : ""}`); }
+    if(t==="no_es_para") return sec(alt(), head(s) + `<ul class="nolist">${A(s.items).map(x=>`<li>✕ ${esc(S(x.t, x))}</li>`).join("")}</ul>${A(s.si).length ? `<h3>Es para ti si…</h3><ul class="silist">${A(s.si).map(x=>`<li>✓ ${esc(S(x))}</li>`).join("")}</ul>` : ""}`);
+    if(t==="como_funciona" || t==="como_se_usa") return sec(alt(), head(s) + `<div class="steps3">${A(s.items).slice(0,4).map((x,j)=>`<div><b>${esc(S(x.e, j+1))}</b>${esc(S(x.t))}${x.d ? `<small>${esc(S(x.d))}</small>` : ""}</div>`).join("")}</div>` + fotosGrid(s, "one"));
+    if(t==="escena") return sec(alt(), head(s) + fotosGrid(s, "one") + (s.cita ? `<blockquote>“${esc(S(s.cita).replace(/^["“]|["”]$/g,""))}”</blockquote>` : "") + items(s));
+    if(t==="urgencia") return sec("deep", head(s) + `<ul class="silist">${A(s.items).map(x=>`<li>${esc(S(x.e))} ${esc(S(x.t))}${x.d ? ` · ${esc(S(x.d))}` : ""}</li>`).join("")}</ul>`);
+    if(t==="ya_probaste") return sec(alt(), head(s) + `<div class="stop">${A(s.items).map(x=>`<p><b>${esc(S(x.e))} ${esc(S(x.t))}</b> ${esc(S(x.d))}</p>`).join("")}${s.parrafo ? `<p>${esc(S(s.parrafo))}</p>` : ""}</div>` + fotosGrid(s, "one"));
+    if(t==="regalo") return sec("deep", head(s) + `<div class="chips">${A(s.items).map(x=>`<span>${esc(S(x.e))} ${esc(S(x.t))}</span>`).join("")}</div>`);
+    return sec(alt(), head(s) + items(s) + fotosGrid(s, t==="galeria_uso" || t==="donde" ? "ugrid" : "one") + (s.parrafo ? `<p class="note">${esc(S(s.parrafo))}</p>` : ""));
+  }).join("");
+  const offer = packs.map((p,j)=>`<button type="button" class="offer${j===sel?" is-selected":""}" data-pack="${j}"><span class="radio"></span>${p.badge ? `<span class="badge">${esc(p.badge)}</span>` : ""}${G[0] ? lpFoto(G[0], fotos, "oimg") : ""}<span class="info"><span class="t">${esc(p.titulo)}</span><span class="s">${esc(p.sub)}</span><span class="pr">${money(p.precio)}${p.antes ? ` <s>${money(p.antes)}</s>` : ""}</span>${p.ahorro ? `<span class="off">Ahorras ${money(p.ahorro)} · ${money(p.cu)} c/u</span>` : ""}<span class="s">🚚 Envío gratis</span></span></button>`).join("");
+  const top = A(L.topbar).length ? A(L.topbar) : ["PAGO CONTRA ENTREGA","ENVÍO GRATIS A TODA COLOMBIA","LLEGA EN 2 A 5 DÍAS HÁBILES","PRODUCTO SELLADO"];
+  const tick = A(L.ticker);
+  const css = `:root{--bg:${T.bg};--bg2:${T.bg2};--card:${T.card};--line:${T.line};--txt:${T.txt};--muted:${T.muted};--head:${T.head_c};--acc:${T.acc};--acc2:${T.acc2};--deep:${T.deep};--deeptxt:${T.deeptxt};--top:${T.top};--hf:'${T.head}',system-ui,sans-serif;--bf:'${T.body}',system-ui,sans-serif}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--txt);font-family:var(--bf);font-size:17px;line-height:1.55;-webkit-font-smoothing:antialiased}img{max-width:100%;display:block}
+.lp{max-width:560px;margin:0 auto;background:var(--bg);overflow:hidden;padding-bottom:84px}
+.topbar{background:var(--top);color:#fff;overflow:hidden;padding:8px 0}.track{display:flex;gap:34px;width:max-content;animation:mv 28s linear infinite;font-size:.72rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}.track span::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--acc2);margin-right:9px;vertical-align:middle}@keyframes mv{to{transform:translateX(-50%)}}
+.nav{text-align:center;padding:12px 16px;border-bottom:1px solid var(--line);font-family:var(--hf);font-weight:800;font-size:1.5rem;letter-spacing:.06em;color:var(--head)}
+.gal{position:relative;background:var(--bg2)}.gtrack{display:flex;transition:transform .5s cubic-bezier(.6,0,.2,1)}.gtrack>*{flex:0 0 100%;aspect-ratio:1/1;object-fit:cover;width:100%}
+.thumbs{display:flex;justify-content:center;gap:8px;padding:10px 12px 2px}.thumbs button{width:54px;height:54px;padding:0;border:2px solid var(--line);border-radius:10px;overflow:hidden;background:var(--card);opacity:.7;cursor:pointer}.thumbs button.on{border-color:var(--acc);opacity:1}.thumbs img,.thumbs .ph{width:100%;height:100%;object-fit:cover}
+.ph{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:linear-gradient(135deg,var(--bg2),var(--card));color:var(--muted);text-align:center;padding:12px;aspect-ratio:1/1;border-radius:14px}.ph span{font-size:2.4rem}.ph small{font-size:.75rem;font-weight:700;line-height:1.2}.thumbs .ph span{font-size:1.2rem}.thumbs .ph small{display:none}
+.buy{text-align:center;padding:18px 18px 28px}.kicker{margin:0 0 4px;font-size:.72rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--acc)}
+h1,h2,h3{font-family:var(--hf);font-weight:800;line-height:1.12;margin:0 0 12px;color:var(--head)}h1{font-size:1.6rem}h2{font-size:1.7rem;text-align:center}h3{font-size:1.15rem;text-align:center;margin-top:18px}h1 em,h2 em{font-style:normal;color:var(--acc)}
+.hook2{font-family:var(--hf);font-size:1.15rem;font-weight:700;margin:0 0 12px;line-height:1.3}
+.ben{list-style:none;margin:0 0 14px;padding:0;text-align:left;display:inline-block;font-size:.97rem}.ben li{position:relative;padding-left:24px;margin:0 0 6px}.ben li::before{content:"✓";position:absolute;left:0;color:var(--acc);font-weight:900}
+.pricebar{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:11px 14px;margin:0 0 12px;text-align:left;box-shadow:0 10px 26px -18px rgba(0,0,0,.45)}.pricebar .k{font-size:.68rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--acc)}.pricebar .p{font-family:var(--hf);font-weight:800;font-size:1.9rem;color:var(--head);line-height:1}.pricebar .r{font-size:.82rem;font-weight:800;text-align:right;line-height:1.5}
+.combo{display:block;width:100%;background:transparent;border:1.5px dashed var(--acc);border-radius:14px;padding:9px 12px;margin:0 0 12px;font:inherit;font-size:.92rem;font-weight:700;color:var(--txt);cursor:pointer}.combo b{color:var(--acc)}
+.cta{display:flex;flex-direction:column;align-items:center;gap:2px;width:100%;min-height:58px;padding:10px 16px;background:linear-gradient(135deg,#E23838,#B01E1E);border:2px solid #9A1818;color:#fff;border-radius:14px;cursor:pointer;font-family:inherit;animation:pulse 2.6s ease-in-out infinite}.cta b{font-weight:900;font-size:1.1em;letter-spacing:.04em;text-transform:uppercase}.cta small{font-weight:700;font-size:.8em}@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.025)}}
+.sticky{position:fixed;left:12px;right:12px;bottom:10px;max-width:520px;margin:0 auto;z-index:50;box-shadow:0 -6px 24px rgba(0,0,0,.35);transition:opacity .25s}.sticky.off{opacity:0;pointer-events:none}
+.mini{display:flex;justify-content:center;flex-wrap:wrap;gap:6px 14px;margin-top:12px;font-size:.82rem;font-weight:800;color:var(--muted)}.mini span::before{content:"✓ ";color:var(--acc)}
+.tick{overflow:hidden;padding:11px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}.tick .track{gap:10px;animation-duration:40s;letter-spacing:0;text-transform:none;font-size:.84rem;font-weight:700}.tick .track span{background:var(--card);border:1px solid var(--line);border-radius:99px;padding:6px 13px;color:var(--txt)}.tick .track span::before{display:none}
+.sec{padding:0}.sec .wrap{padding:40px 18px}.b1{background:var(--bg)}.b2{background:var(--bg2)}.deep{background:var(--deep);color:var(--deeptxt)}.deep h2,.deep h3{color:#fff}.deep h2 em{color:var(--acc2)}.deep .eyebrow{color:var(--acc2)}.deep .lead{color:var(--deeptxt);opacity:.85}
+.eyebrow{text-align:center;font-size:.72rem;font-weight:900;letter-spacing:.16em;text-transform:uppercase;color:var(--acc);margin:0 0 8px}.lead{text-align:center;color:var(--muted);margin:0 0 14px}.note{font-size:.88rem;color:var(--muted);text-align:center;margin-top:12px}
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;font-size:.88rem}.card b{display:block;color:var(--head);margin-bottom:2px}.card span{color:var(--muted)}
+.steps3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:6px 0 12px}.steps3 div{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 6px;text-align:center;font-size:.8rem;font-weight:800;color:var(--head);line-height:1.25}.steps3 b{display:block;font-size:1.5rem;margin-bottom:4px}.steps3 small{display:block;font-weight:600;color:var(--muted);margin-top:3px}
+.one figure,.ugrid figure{margin:0}.one img,.one .ph{width:100%;border-radius:18px;margin:12px 0;box-shadow:0 16px 34px -24px rgba(0,0,0,.55)}
+.ugrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}.ugrid img,.ugrid .ph{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:14px}.ugrid figcaption{font-size:.8rem;font-weight:800;margin-top:5px;text-align:center}
+blockquote{margin:14px 0;padding:14px 16px;background:var(--card);border-left:4px solid var(--acc);border-radius:12px;font-family:var(--hf);font-size:1.1rem;font-weight:700;color:var(--head)}
+.cmp{display:grid;grid-template-columns:1.6fr .8fr .8fr;border-radius:16px;overflow:hidden;border:1px solid var(--line);margin:14px 0;background:var(--card)}.cmp>div{padding:11px 8px;border-bottom:1px solid var(--line);font-size:.9rem;font-weight:700;text-align:center}.cmp .cr{text-align:left}.cmp .ch{font-family:var(--hf);font-weight:800;font-size:.85rem}.cmp .me,.cmp .cv{background:color-mix(in srgb,var(--acc) 14%,transparent);color:var(--acc)}.cmp .cx{color:#B01E1E}.cmp .cv{font-weight:900}
+.stop{background:var(--card);border-left:4px solid var(--acc);border-radius:12px;padding:14px 16px;font-size:.98rem}.stop p:last-child{margin-bottom:0}
+.nolist,.silist{list-style:none;padding:0;margin:10px 0}.nolist li,.silist li{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:0 0 8px;font-size:.92rem;font-weight:700}.nolist li{color:#9A1818}.deep .silist li{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.15);color:var(--deeptxt)}
+.chips{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:10px}.chips span{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:99px;padding:7px 14px;font-weight:800;font-size:.9rem}
+.offers{display:grid;gap:14px;margin:14px 0}.offer{position:relative;display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--card);color:var(--txt);border:2px solid var(--line);border-radius:18px;padding:12px 12px 12px 40px;font:inherit;cursor:pointer}.offer.is-selected{border-color:var(--acc);box-shadow:0 18px 40px -22px var(--acc)}.offer .radio{position:absolute;left:13px;top:50%;width:18px;height:18px;margin-top:-9px;border-radius:50%;border:2px solid var(--muted)}.offer.is-selected .radio{border-color:var(--acc);background:radial-gradient(circle,var(--acc) 0 45%,transparent 50%)}.offer .oimg{width:76px;height:76px;flex:0 0 76px;object-fit:cover;border-radius:12px;aspect-ratio:1/1;padding:0}.offer .oimg span{font-size:1.4rem}.offer .oimg small{display:none}.offer .info{display:flex;flex-direction:column;gap:1px;min-width:0}.offer .t{font-family:var(--hf);font-weight:800;font-size:1.12rem;color:var(--head)}.offer .s{font-size:.8rem;color:var(--muted)}.offer .pr{font-family:var(--hf);font-weight:800;font-size:1.45rem;color:var(--head)}.offer .pr s{font-size:.85rem;color:var(--muted);font-weight:700}.offer .off{align-self:flex-start;background:#D62828;color:#fff;font-size:.7rem;font-weight:900;border-radius:99px;padding:2px 8px}.offer .badge{position:absolute;top:-10px;right:12px;background:var(--acc);color:#fff;font-size:.66rem;font-weight:900;letter-spacing:.06em;border-radius:99px;padding:3px 10px}
+.deep .offer{color:var(--txt)}
+details{background:var(--card);border:1px solid var(--line);border-radius:14px;margin:0 0 10px;padding:0 14px}summary{cursor:pointer;font-weight:800;padding:13px 0;color:var(--head)}details p{margin:0 0 13px;color:var(--muted)}
+.final{text-align:center}.legal{font-size:.75rem;color:var(--muted);text-align:center;padding:18px;margin:0}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:flex-end;justify-content:center;z-index:99}.ov.on{display:flex}.fp{background:var(--bg);color:var(--txt);width:100%;max-width:520px;max-height:92vh;overflow:auto;border-radius:20px 20px 0 0;padding:18px}.fp h3{margin:0 0 4px}.fp .x{float:right;border:0;background:transparent;font-size:1.4rem;cursor:pointer;color:var(--txt)}.fp label{display:block;font-size:.82rem;font-weight:800;margin:10px 0 4px}.fp input,.fp select{width:100%;padding:12px;border:1.5px solid var(--line);border-radius:12px;font:inherit;background:var(--card);color:var(--txt)}.fp .tot{display:flex;justify-content:space-between;font-weight:900;font-size:1.1rem;margin:14px 0}.fp .err{color:#D62828;font-size:.82rem;font-weight:700;min-height:1em}.fp .priv{font-size:.75rem;color:var(--muted);text-align:center}
+@media (prefers-reduced-motion:reduce){.track,.cta{animation:none}}`;
+  const script = `(function(){var P=${JSON.stringify(packs.map(p=>({n:p.n,t:p.titulo,p:p.precio})))},WA=${JSON.stringify(wa)},NAME=${JSON.stringify(marca + " · " + S(L.nombre_largo))},sel=${sel};
+var $=function(s){return document.querySelector(s)},$=function(s){return Array.prototype.slice.call(document.querySelectorAll(s))};
+var g=$('.gtrack'),th=$('.thumbs button'),gi=0;function go(i){if(!g)return;gi=(i+th.length)%Math.max(1,th.length);g.style.transform='translateX(-'+gi*100+'%)';th.forEach(function(b,j){b.classList.toggle('on',j===gi)})}th.forEach(function(b,j){b.onclick=function(){go(j)}});if(th.length>1)setInterval(function(){go(gi+1)},4500);
+function money(n){return '
+  const i = r.__input || {};
+  const P = +r.__precio || 0, C = +i.costo || 0, E = +i.flete || 0, d = Math.min(Math.max((+i.devol||0)/100,0),.95);
+  const porEnt = P - C - E;
+  const maxCPA = (1-d)*porEnt - d*E;
+  const roas = maxCPA > 0 ? (1-d)*P/maxCPA : Infinity;
+  const cpa = +r.mercado?.cpa_estimado || 0;
+  return {P, C, E, d, porEnt, maxCPA, roas, cpa, neto: maxCPA - cpa};
+}
+function satOf(r){
+  const m = r?.mercado || {};
+  if(m.saturacion_pct !== undefined && m.saturacion_pct !== null && isFinite(+m.saturacion_pct)) return Math.max(0, Math.min(100, Math.round(+m.saturacion_pct)));
+  const comp = A(m.puntajes).find(x=>/competencia/i.test(S(x.criterio)));
+  return comp ? Math.max(0, Math.min(100, 100 - Math.round(+comp.pct||0))) : null;
+}
+
+const RM_CSS = `.rm{--wine:#4A0D18;--cream:#FBF3E4;--sand:#F3E6CC;--brass:#C8902E;--pine:#1F6B43;--ink:#2A1A12;--soft:#6B5546;--line:#E6D6B8;--berry:#C8102E;background:var(--cream);color:var(--ink);font:15px/1.55 'DM Sans',system-ui,sans-serif;color-scheme:light}
+.rm *{box-sizing:border-box}
+.rm header{background:var(--wine);color:#FFF7EA;padding:22px 18px 0}
+.rm header h1{font-family:Fraunces,Georgia,serif;font-size:1.6rem;margin:0 0 4px}
+.rm header p{margin:0 0 14px;color:#E4C9B8;font-size:.92rem}
+.rm nav.tabs{display:flex;gap:4px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.rm nav.tabs button{flex:0 0 auto;border:0;background:rgba(255,255,255,.08);color:#F2CF7E;font:700 .86rem 'DM Sans',sans-serif;padding:10px 14px;border-radius:10px 10px 0 0;cursor:pointer}
+.rm nav.tabs button.on{background:var(--cream);color:var(--wine)}
+.rm main{max-width:900px;margin:0 auto;padding:20px 16px 80px}
+.rm section.tab{display:none}.rm section.tab.on{display:block}
+.rm h2{font-family:Fraunces,Georgia,serif;color:var(--wine);font-size:1.35rem;margin:34px 0 10px}
+.rm h3{font-size:1rem;margin:22px 0 6px;color:var(--pine)}
+.rm .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin:10px 0}
+.rm .warn{background:#FFF1D6;border:1.5px solid var(--brass);border-radius:14px;padding:12px 16px;margin:12px 0}
+.rm table{width:100%;border-collapse:collapse;font-size:.88rem;background:#fff;border-radius:12px;overflow:hidden;margin:8px 0}
+.rm th,.rm td{border-bottom:1px solid var(--line);padding:8px 9px;text-align:left;vertical-align:top}
+.rm th{background:var(--sand);font-size:.78rem;text-transform:uppercase;letter-spacing:.04em}
+.rm .tw{overflow-x:auto}
+.rm .pb{background:#fff;border:1px solid var(--line);border-radius:14px;margin:12px 0;overflow:hidden}
+.rm .pb .ph{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 12px;background:var(--sand)}
+.rm .pb .ph b{font-size:.92rem}
+.rm .pb .att{padding:7px 12px 0;font-size:.82rem;color:var(--soft)}
+.rm .pb .att span{font-weight:800;color:var(--pine)}
+.rm .pb pre{margin:0;padding:10px 12px 12px;white-space:pre-wrap;word-break:break-word;font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:#2b2420}
+.rm button.cp{border:0;background:var(--pine);color:#fff;font:800 .8rem 'DM Sans',sans-serif;padding:7px 14px;border-radius:99px;cursor:pointer;flex:0 0 auto}
+.rm button.cp.ok{background:var(--wine)}
+.rm ol.steps{padding-left:22px}.rm ol.steps li{margin:6px 0}
+.rm a{color:var(--berry);word-break:break-all}
+.rm code{background:var(--sand);padding:1px 5px;border-radius:5px;font-size:.85em}
+.rm .hero{display:flex;flex-wrap:wrap;align-items:center;gap:18px}
+.rm .big{font-family:Fraunces,Georgia,serif;font-size:3rem;line-height:1;color:var(--wine)}
+.rm .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:10px 0}
+.rm .kpi{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.rm .kpi b{display:block;font-size:1.2rem;color:var(--wine);font-variant-numeric:tabular-nums}
+.rm .kpi span{font-size:.8rem;color:var(--soft)}
+.rm .bar{display:inline-block;width:110px;height:8px;background:var(--sand);border-radius:99px;overflow:hidden;vertical-align:middle;margin-right:8px}
+.rm .bar i{display:block;height:100%;background:var(--pine)}
+.rm .bar i.mid{background:var(--brass)} .rm .bar i.low{background:var(--berry)}`;
+
+const TD_CSS = `.rm.td{--bg:#f6f4ef;--fg:#1d1d1b;--mut:#6b6a66;--card:#fff;--acc:#1f5f8b;--line:#e3e0d8;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;color-scheme:light dark}
+@media (prefers-color-scheme:dark){.rm.td{--bg:#151514;--fg:#ecebe7;--mut:#a3a19b;--card:#1f1f1d;--acc:#7bb6e0;--line:#33322f}}
+.rm.td header{background:var(--bg);color:var(--fg);padding:20px 20px 0;max-width:1000px;margin:auto}
+.rm.td header h1{font:700 22px/1.3 system-ui,-apple-system,Segoe UI,sans-serif;margin:0 0 4px;color:var(--fg)}
+.rm.td header p{color:var(--mut);margin:0 0 12px;font-size:15px}
+.rm.td nav.tabs{position:sticky;top:0;background:var(--bg);border-bottom:1px solid var(--line);padding:8px 0;display:flex;gap:6px;flex-wrap:wrap;z-index:5}
+.rm.td nav.tabs button{border:1px solid var(--line);background:var(--card);color:var(--fg);padding:6px 12px;border-radius:999px;font:500 14px system-ui,sans-serif}
+.rm.td nav.tabs button.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+.rm.td main{max-width:1000px;margin:auto;padding:10px 20px 60px}
+.rm.td h2{font:700 19px/1.3 system-ui,sans-serif;margin:18px 0 6px;color:var(--fg)}
+.rm.td h3{font:700 16px/1.3 system-ui,sans-serif;margin:26px 0 8px;color:var(--fg);scroll-margin-top:60px}
+.rm.td .lead{margin:0 0 4px} .rm.td .tag,.rm.td .note{color:var(--mut);font-size:13.5px}
+.rm.td table{font-size:13.5px;background:var(--card);border-radius:0;border-collapse:collapse}
+.rm.td th,.rm.td td{border:1px solid var(--line);padding:6px 8px} .rm.td th{background:var(--line);text-transform:none;letter-spacing:0;font-size:13.5px}
+.rm.td .same{color:var(--mut)}
+.rm.td .warn{background:#fff4d6;color:#4a3b00;border:0;border-radius:8px;padding:10px 12px;margin:14px 0;font-size:14px}
+@media (prefers-color-scheme:dark){.rm.td .warn{background:#3a3011;color:#f3e3a8}}
+.rm.td .card,.rm.td .kpi{background:var(--card);border-color:var(--line);border-radius:10px;color:var(--fg)}
+.rm.td .kpi b,.rm.td .big{color:var(--acc)} .rm.td .kpi span{color:var(--mut)}
+.rm.td .chips a{display:inline-block;margin:4px 6px 0 0;padding:3px 10px;border:1px solid var(--line);border-radius:999px;color:var(--acc);text-decoration:none;font-size:13px;cursor:pointer;word-break:normal}
+.rm.td .pb{background:var(--card);border-color:var(--line);border-radius:10px}
+.rm.td .pb .ph{background:transparent;justify-content:flex-start;gap:8px}
+.rm.td .pb .ph b{flex:1;font-weight:600}
+.rm.td .pb .att{color:var(--mut)} .rm.td .pb .att span{color:var(--fg);font-weight:600}
+.rm.td .pb pre{border-top:1px solid var(--line);color:var(--fg)}
+.rm.td button.cp{background:var(--acc);border-radius:6px;padding:5px 12px;font:600 13px system-ui,sans-serif}
+.rm.td .okb{font-size:12px;color:#2e7d32} .rm.td .midb{font-size:12px;color:#a86b00} .rm.td .badb{font-size:12px;color:#c62828;font-weight:700}
+.rm.td a{color:var(--acc)} .rm.td code{background:var(--line)} .rm.td .bar{background:var(--line)} .rm.td .bar i{background:var(--acc)}`;
+const RM_SCRIPT = `(function(){var root=document;function show(k){root.querySelectorAll('section.tab').forEach(function(s){s.classList.toggle('on',s.id===k)});root.querySelectorAll('nav.tabs button').forEach(function(b){b.classList.toggle('on',b.dataset.k===k)});try{history.replaceState(null,'','#'+k)}catch(e){};window.scrollTo(0,0)}
+root.querySelectorAll('nav.tabs button').forEach(function(b){b.onclick=function(){show(b.dataset.k)}});
+root.querySelectorAll('[data-goto]').forEach(function(a){a.onclick=function(){var el=document.getElementById(a.dataset.goto);if(el)el.scrollIntoView({behavior:'smooth',block:'start'})}});
+root.querySelectorAll('button.cp').forEach(function(b){b.onclick=function(){var pre=document.getElementById(b.dataset.t);var t=pre.innerText;var done=function(){b.textContent='Copiado';b.classList.add('ok');setTimeout(function(){b.textContent='Copiar';b.classList.remove('ok')},1600)};var sel=function(){var r=document.createRange();r.selectNodeContents(pre);var s=getSelection();s.removeAllRanges();s.addRange(r);b.textContent='Ctrl+C'};try{navigator.clipboard.writeText(t).then(done,sel)}catch(e){sel()}}});
+var h=location.hash.slice(1);if(h&&document.getElementById(h)&&document.getElementById(h).classList.contains('tab'))show(h);})();`;
+
+const RM_SAFE = `<div class="card"><b>Antes de exportar, revisa estas 3 cosas:</b><br>• <b>Primeros 3 segundos:</b> arranca con el gancho visual (el resultado o el problema). Nunca con "ENVÍO GRATIS", el precio ni el logo.<br>• <b>Zona segura:</b> textos y subtítulos en el centro. Deja libre el 14 % de arriba, el 35 % de abajo y un margen a los lados: ahí Reels y Stories ponen botones y el nombre de la cuenta. En CapCut activa la guía de zona segura o revisa la vista previa de Reels en Meta.<br>• <b>Energía y emoción:</b> música alegre y con ritmo, voz que se oiga sonriente y avatares con sonrisa genuina mostrando el producto. Si el producto quita una molestia: primero la molestia creíble, después alivio y alegría recomendándolo.<br>• <b>Urgencia creíble:</b> nada de "SOLO POR HOY" ni "QUEDAN POCOS". Usa "PROMO DE TEMPORADA" o "HASTA AGOTAR EXISTENCIAS".</div>`;
+function rmPromptImg(m, r){ const p = r.producto || {}; return `[STYLE LOCK]: Scroll-stopping social ad photo, cinematic product photography, true to life color, crisp detail
+[SUBJECT]: ${fillProduct("{PRODUCTO}", p)}
+[ACTION]: ${S(m.action_en)}
+[ENVIRONMENT]: ${S(m.environment_en)}
+[LIGHTING]: ${S(m.lighting_en)}
+[CAMERA]: ${S(m.camera_en)}; leave clean empty space in the upper-middle area for a headline
+[ASPECT]: 4:5 vertical
+[REFERENCE]: P0
+[PRODUCT]: ${S(p.lock_en)}
+[EXCLUDE]: ${EXCL}`; }
+function rmBody(r){
+  const p = r.producto || {}, m = r.mercado || {}, g = r.ganador || {};
+  const vs = A(r.variaciones), nums = rmNumbers(r);
+  let n = 0;
+  const pb = (title, att, text) => { n++; return `<div class="pb"><div class="ph"><b>${esc(title)}</b><button class="cp" data-t="t${n}">Copiar</button></div>${att ? `<div class="att">${att}</div>` : ""}<pre id="t${n}">${esc(text)}</pre></div>`; };
+  const table = (heads, rows) => `<div class="tw"><table><thead><tr>${heads.map(x=>`<th>${esc(x)}</th>`).join("")}</tr></thead><tbody>${rows.map(rw=>`<tr>${rw.map(c=>`<td>${esc(S(c))}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+  const att = (lbl, v) => `<span>${lbl}:</span> ${esc(v)}`;
+  const tabs = [["inicio","Inicio"], ...(r.meta ? [["meta","📣 Cómo pautar en Meta"]] : []), ...(A(r.imagenes_ad).length ? [["imagenes","🖼️ Anuncios de imagen"]] : []), ["mercado","Mercado y números"], ...vs.map((v,k)=>["v"+(k+1), `${S(v.id,"V"+(k+1))} · ${S(v.nombre)}`]), ["ganchos","Ganchos"]];
+
+  let inicio = "";
+  if(r.meta){ const rc = r.meta.recomendacion || {}; inicio += `<div class="card hero"><div class="big" style="font-size:1.6rem">📣</div><div><b>Cómo pautarlo en Meta:</b> objetivo <b>${esc(S(rc.objetivo))}</b>${rc.ubicacion ? ` · ${esc(S(rc.ubicacion))}` : ""}${rc.rendimiento ? ` · ${esc(S(rc.rendimiento))}` : ""}.<br>Todo campo por campo, con títulos y descripciones listos para copiar, en la pestaña <b>📣 Cómo pautar en Meta</b> de arriba.</div></div>`; }
+  if(A(r.alertas).length) inicio += `<div class="warn"><b>Antes de pautar, ${A(r.alertas).length===1?"una alerta":A(r.alertas).length+" alertas"}:</b><br>${A(r.alertas).map((a,k)=>`${k+1}. <b>${esc(S(a.titulo))}:</b> ${esc(S(a.texto))}`).join("<br>")}</div>`;
+  inicio += `<h2>${g.existe===false ? "Lo que domina en el mercado" : "Por qué funciona el ganador"}</h2>`;
+  if(g.fuente) inicio += `<p>${linkify(S(g.fuente))}</p>`;
+  if(A(g.tabla).length) inicio += table(["Tiempo","Lo que dice","Lo que se ve"], A(g.tabla).map(x=>[x.t,x.dice,x.ve]));
+  inicio += `<div class="card"><b>Lo que hace que funcione:</b> ${esc(S(g.por_que))}<br><b>Lo que le falta y las variaciones agregan:</b> ${esc(S(g.le_falta))}</div>`;
+  inicio += `<h2>Las 3 variaciones</h2>` + table(["","Nivel","Concepto","Gancho"], vs.map(v=>[`${S(v.id)} · ${S(v.nombre)}`, v.nivel, v.concepto, v.gancho]));
+  inicio += `<h2>Hoja de ruta</h2><ol class="steps">
+<li><b>Flow · imagen:</b> genera P0 con la foto real del proveedor. Si ya la tienes de videos anteriores, úsala, no la regeneres.</li>
+<li><b>Flow · imagen:</b> genera el ancla A1 de cada variación (la persona solo sale en el último plano).</li>
+<li><b>Flow · imagen:</b> genera las imágenes F en orden con lo que dice "Adjuntar".</li>
+<li><b>Flow · video:</b> genera cada clip C con su F como start frame. <b>Todos van con video sin sonido</b>: la voz y la música se ponen encima.</li>
+<li><b>Fish Audio o ElevenLabs:</b> pega el guion corrido de la variación y genera la voz.</li>
+<li><b>CapCut:</b> monta unos 3 s por clip, voz encima, música de la librería al 20 %, subtítulos palabra por palabra y los textos de la variación con entrada de rebote. <b>Los primeros 3 s muestran el gancho visual, nunca la oferta</b>, y todos los textos van en la <b>zona segura</b> (centro, lejos de los bordes).</li>
+<li><b>Flow · imagen:</b> genera los 2 anuncios de imagen de la pestaña 📣 Cómo pautar en Meta y ponles el texto encima en Canva o CapCut.</li>
+<li><b>Exporta</b> como ${vs.map((v,k)=>`${S(v.id,"V"+(k+1))}_${["muy","medio","no"][k]||"x"}_G0`).join(", ")}.</li></ol>`;
+  inicio += `<div class="card"><b>Regla del producto:</b> ${esc(S(p.regla))}</div>`;
+
+  const pct = x => Math.max(0, Math.min(100, Math.round(+x||0)));
+  const barCls = x => x>=70 ? "" : x>=45 ? "mid" : "low";
+  let merc = `<h2>¿Vale la pena testearlo?</h2><div class="card hero"><div class="big">${pct(m.potencial_pct)}%</div><div><b>${esc(S(m.veredicto))}</b><br>${esc(S(m.resumen))}</div></div>`;
+  const sat = satOf(r);
+  if(sat !== null) merc += `<div class="card hero"><div class="big" style="color:${sat>=65?"var(--berry)":sat>=40?"var(--brass)":"var(--pine)"}">${sat}%</div><div><b>Saturación en ${esc(S(r.__input?.pais,"Colombia"))}: ${sat>=65?"muy saturado":sat>=40?"competencia media":"poco saturado"}</b><br>${esc(S(m.saturacion_nota, "Calculada como 100 menos el puntaje de competencia."))}</div></div>`;
+  merc += `<h3>Puntaje por criterio</h3>` + `<div class="tw"><table><thead><tr><th>Criterio</th><th>Puntaje</th><th>Por qué</th></tr></thead><tbody>${A(m.puntajes).map(s=>{const v=pct(s.pct);return `<tr><td>${esc(S(s.criterio))}</td><td style="white-space:nowrap"><span class="bar"><i class="${barCls(v)}" style="width:${v}%"></i></span>${v}%</td><td>${esc(S(s.nota))}</td></tr>`;}).join("")}</tbody></table></div>`;
+  merc += `<h3>Números del producto (estimación con pago contraentrega)</h3><div class="kpis">
+<div class="kpi"><span>Precio de venta ${r.__input?.precio ? "" : "sugerido"}</span><b>${money(nums.P)}</b></div>
+<div class="kpi"><span>Ganancia por pedido entregado, antes de publicidad</span><b>${money(nums.porEnt)}</b></div>
+<div class="kpi"><span>CPA máximo para no perder (${Math.round(nums.d*100)}% devoluciones)</span><b>${money(nums.maxCPA)}</b></div>
+<div class="kpi"><span>ROAS de equilibrio</span><b>${isFinite(nums.roas) ? nums.roas.toFixed(2)+"x" : "No rentable"}</b></div>
+<div class="kpi"><span>CPA estimado del mercado</span><b>${money(nums.cpa)}</b></div>
+<div class="kpi"><span>Ganancia neta por pedido con ese CPA</span><b>${money(nums.neto)}</b></div></div>
+<div class="card"><b>Precio en el mercado:</b> ${esc(S(m.precio_mercado))}<br><b>Precio sugerido:</b> ${money(m.precio_sugerido)}. ${esc(S(m.razon_precio))}<br><small>Costo proveedor ${money(nums.C)} · flete ${money(nums.E)}. Los cálculos asumen que en cada devolución pierdes el flete.</small></div>`;
+  if(A(m.competidores).length) merc += `<h3>Cómo lo vende la competencia</h3><div class="tw"><table><thead><tr><th>Competidor</th><th>Precio</th><th>Oferta</th><th>Ángulo</th></tr></thead><tbody>${A(m.competidores).map(c=>`<tr><td>${c.url ? `<a href="${esc(S(c.url))}" target="_blank" rel="noopener">${esc(S(c.nombre,"Ver"))}</a>` : esc(S(c.nombre))}</td><td>${esc(S(c.precio))}</td><td>${esc(S(c.oferta))}</td><td>${esc(S(c.angulo))}</td></tr>`).join("")}</tbody></table></div>`;
+  if(A(m.plan_test).length) merc += `<h3>Plan de testeo</h3><ol class="steps">${A(m.plan_test).map(x=>`<li>${esc(S(x))}</li>`).join("")}</ol>`;
+  if(A(m.fuentes).length) merc += `<h3>Fuentes</h3><ol class="steps">${A(m.fuentes).map(u=>`<li>${linkify(S(u))}</li>`).join("")}</ol>`;
+
+  const varTabs = vs.map((v,k)=>{
+    const d = v.__det;
+    let s = `<h2>${esc(S(v.id))} · ${esc(S(v.nombre))} · ${esc(S(v.nivel))}</h2>
+<div class="card"><b>Concepto:</b> ${esc(S(v.concepto))}<br><b>Gancho:</b> ${esc(S(v.gancho))}<br><b>Voz:</b> ${esc(S(d?.voz || v.voz))}</div>`;
+    if(!d) return s + `<div class="warn">Esta variación no se pudo generar. Vuelve a generar la hoja de ruta o pídesela al chat.</div>`;
+    s += `<h3>Hoja de producto y ancla</h3><div class="warn">P0 es la misma en las tres variaciones. Si ya la generaste, no la regeneres.</div>`;
+    s += pb("P0 · Hoja de producto", att("Adjuntar","la foto real del producto del proveedor"), rmPromptP0(p));
+    s += pb("A1 · persona de la variación", att("Adjuntar","nada"), rmPromptA1(d.ancla));
+    s += `<h3>Guion</h3>` + table(["Segundos","Bloque","Voz en off"], A(d.guion).map(x=>[x.seg,x.bloque,x.voz]));
+    s += pb("Guion corrido para Fish Audio / ElevenLabs", "", A(d.guion).map(x=>S(x.voz)).join(" "));
+    s += `<h3>Escaleta</h3>` + table(["Frase","Qué se ve","Imagen","Clip"], A(d.escaleta).map(x=>[x.frase,x.ve,x.img,x.clip]));
+    s += `<h3>Imágenes y clips (Flow)</h3><p>Clips de 8 s con su imagen como start frame y <b>video sin sonido</b>.</p>`;
+    A(d.tomas).forEach((t,j)=>{
+      const fid = S(t.id, "F"+(j+1)), cid = fid.replace(/^F/,"C");
+      s += pb(`${fid} · imagen`, att("Adjuntar", S(t.adjuntar,"P0")), rmPromptF(t, r, d.ancla));
+      s += pb(`${cid} · clip`, att("Start frame", fid), rmPromptC(t, r));
+    });
+    const so = r.sonido || {};
+    s += `<h3>Sonido</h3><div class="card">Los clips van <b>sin sonido</b> en Flow; todo el sonido se pone en el montaje:<br>• <b>Música:</b> ${esc(S(so.musica))}<br>• <b>Efectos:</b> ${esc(S(so.efectos))}<br>• <b>Voz:</b> ${esc(S(so.voz))}${so.ambient_en ? `<br>Si prefieres generar los clips con audio en Flow, agrega al final del prompt: <code>[AMBIENT]: ${esc(S(so.ambient_en).replace(/^\[AMBIENT\]:\s*/i,""))}</code>.` : ""}</div>`;
+    s += `<h3>Textos en pantalla (CapCut)</h3>${RM_SAFE}<ol class="steps">${A(d.textos).map(x=>`<li>${esc(S(x))}</li>`).join("")}</ol>`;
+    return s;
+  });
+
+  const ganchos = `<h2>Banco de ganchos</h2><p>Cada uno reemplaza los primeros 3 segundos de una variación. Genera la imagen con P0 adjunta y el clip sin sonido.</p>` +
+    table(["#","Qué se ve","Qué se dice","Nivel","Va con"], A(r.ganchos).map((x,k)=>["G"+(k+1), x.ve, x.dice, x.nivel, x.va_con]));
+
+  let meta = "";
+  if(r.meta){
+    const mt = r.meta, rec = mt.recomendacion || {};
+    const fases = A(mt.fases).length ? mt.fases : A(mt.presupuesto).filter(x=>x && x.fase);
+    const budget = A(mt.presupuesto).filter(x=>x && x.campo);
+    meta += `<h2>Cómo pautarlo en Meta</h2><div class="kpis">
+<div class="kpi"><span>Objetivo de la campaña</span><b>${esc(S(rec.objetivo,"Ventas"))}</b></div>
+<div class="kpi"><span>Ubicación de la conversión</span><b>${esc(S(rec.ubicacion, rec.evento ? "Sitio web · " + S(rec.evento) : "Sitio web"))}</b></div>
+<div class="kpi"><span>Objetivo de rendimiento</span><b>${esc(S(rec.rendimiento,"Maximizar el número de conversiones"))}</b></div></div>
+<div class="card"><b>Por qué así:</b> ${esc(S(rec.por_que))}</div>`;
+    if(rec.interaccion) meta += `<div class="card"><b>¿Interacción o venta?</b> ${esc(S(rec.interaccion))}</div>`;
+    if(rec.alternativa) meta += `<div class="warn"><b>La otra opción:</b> ${esc(S(rec.alternativa))}</div>`;
+    let paso = 0;
+    const lvl = (t, rows) => A(rows).length ? `<h3>Paso ${++paso} · ${t}</h3>` + table(["Campo en Meta","Qué seleccionar o escribir","Por qué"], A(rows).map(x=>[x.campo, x.valor, x.nota])) : "";
+    meta += lvl("Campaña", mt.campana) + lvl("Presupuesto", budget) + lvl("Conjunto de anuncios", mt.conjunto) + lvl("Anuncio", mt.anuncio);
+    if(A(mt.copies).length){
+      meta += `<h3>Títulos y descripciones para cada video</h3>` + table(["Video","Título","Descripción","Botón"], A(mt.copies).map(c=>[`${S(c.va_con)} · ${S(c.nombre_anuncio)}`, c.titulo, c.descripcion, S(c.cta,"Comprar")]));
+      meta += `<p>Un anuncio por video. Copia y pega cada campo:</p>`;
+      A(mt.copies).forEach(c=>{
+        meta += pb(`${S(c.va_con)} · Título`, "", S(c.titulo));
+        meta += pb(`${S(c.va_con)} · Descripción`, "", S(c.descripcion));
+        meta += pb(`${S(c.va_con)} · Texto principal`, "", S(c.texto_principal));
+      });
+    }
+    if(A(mt.imagenes).length){
+      meta += `<h3>Anuncios de imagen</h3><div class="card">${A(r.imagenes_ad).length ? "Tienes 4 modelos más, completos, en la pestaña <b>🖼️ Anuncios de imagen</b>. " : ""}Pon <b>1 anuncio de imagen en cada conjunto</b>, junto al video (mismo conjunto, mismo botón de WhatsApp). Así Meta tiene más opciones para encontrar compradores: a mucha gente le vende la foto y a otra el video. Genera la imagen en Flow con P0 adjunta y pon el texto encima en Canva o CapCut, dentro de la zona segura (centro, lejos de los bordes).</div>`;
+      A(mt.imagenes).forEach((m,k)=>{
+        const id = S(m.id, "IMG"+(k+1));
+        meta += `<div class="card"><b>${esc(id)} · ${esc(S(m.nombre))}</b><br>${esc(S(m.concepto))}<br><b>Texto encima:</b> ${esc(S(m.texto_encima))}${m.texto_secundario ? ` · <small>${esc(S(m.texto_secundario))}</small>` : ""}</div>`;
+        meta += pb(`${id} · imagen (Flow)`, att("Adjuntar","P0"), rmPromptImg(m, r));
+        meta += pb(`${id} · Título`, "", S(m.titulo));
+        meta += pb(`${id} · Descripción`, "", S(m.descripcion));
+        meta += pb(`${id} · Texto principal`, "", S(m.texto_principal));
+      });
+    }
+    if(A(mt.titulos_extra).length) meta += pb("Más títulos enganchables (uno por línea)", "", A(mt.titulos_extra).map(S).join("\n"));
+    if(A(mt.descripciones_extra).length) meta += pb("Más descripciones enganchables (una por línea)", "", A(mt.descripciones_extra).map(S).join("\n"));
+    if(A(mt.textos_extra).length) meta += `<h3>Textos principales alternativos</h3>` + A(mt.textos_extra).map((x,k)=>pb(`Texto alternativo ${k+1}`, "", S(x))).join("");
+    if(mt.whatsapp){
+      const w = mt.whatsapp;
+      meta += `<h3>WhatsApp: lo que ve el cliente y cómo cerrar la venta</h3>`;
+      if(w.bienvenida) meta += pb("Mensaje de bienvenida (plantilla del anuncio)", "", S(w.bienvenida));
+      if(A(w.preguntas).length) meta += pb("Preguntas frecuentes (una por línea)", "", A(w.preguntas).map(S).join("\n"));
+      if(A(w.guion_cierre).length) meta += `<ol class="steps">${A(w.guion_cierre).map(x=>`<li>${esc(S(x))}</li>`).join("")}</ol>`;
+    }
+    if(fases.length) meta += `<h3>Presupuesto por fases</h3>` + table(["Fase","Días","Qué hacer"], fases.map(x=>[x.fase, x.dias, x.que_hacer]));
+    if(A(mt.reglas).length) meta += `<h3>Cuándo cortar y cuándo escalar</h3>` + table(["Si pasa esto","Haz esto"], A(mt.reglas).map(x=>[x.si, x.entonces]));
+    if(A(mt.errores).length) meta += `<h3>Errores que te quitan ventas</h3><ol class="steps">${A(mt.errores).map(x=>`<li>${esc(S(x))}</li>`).join("")}</ol>`;
+  }
+
+  let imgs = "";
+  if(A(r.imagenes_ad).length){
+    imgs = `<h2>4 anuncios de imagen</h2><div class="card">Cuatro formatos de los anuncios de imagen que más venden en Meta, adaptados a este producto. Ponlos <b>en los mismos conjuntos que los videos</b>: Meta reparte entre video e imagen y encuentra más compradores.<br><b>Cómo hacerlos:</b> 1) genera la imagen en Flow con <b>P0</b> adjunta (sale sin texto); 2) en Canva o CapCut ponle el titular, el sello y el botón como dice "Diseño", siempre en la zona segura (centro, lejos de los bordes); 3) exporta en 4:5 (1080 × 1350) para Feed y, si quieres Stories, cambia [ASPECT] a 9:16 y deja más espacio arriba y abajo.</div>`;
+    imgs += table(["Modelo","Formato","Por qué vende este producto"], A(r.imagenes_ad).map(m=>[S(m.id), S(m.modelo), S(m.por_que)]));
+    A(r.imagenes_ad).forEach(m=>{
+      const id = S(m.id);
+      imgs += `<h3>${esc(id)} · ${esc(S(m.modelo))}</h3>`;
+      imgs += pb(`${id} · imagen (Flow)`, att("Adjuntar", S(m.persona_en) ? "P0 (y A1 de una variación si quieres la misma persona)" : "P0"), rmPromptModelo(m, r));
+      imgs += table(["Texto encima","Qué poner"], [["Titular", m.titular], ["Subtítulo", m.subtitulo], ["Sello", m.sello], ["Botón", m.cta], ["Diseño en Canva", m.diseno]]);
+      imgs += pb(`${id} · Título del anuncio`, "", S(m.titulo));
+      imgs += pb(`${id} · Descripción`, "", S(m.descripcion));
+      imgs += pb(`${id} · Texto principal`, "", S(m.texto_principal));
+    });
+  }
+  if(r.modo==="seguro"){
+    const P = r.producto || {}, D = A(r.dialogo), STY = S(r.estilo_en, SEG_STYLE), V = A(r.variaciones);
+    const seg = d => (S(d.seguro)==="igual" || !S(d.seguro)) ? S(d.original) : S(d.seguro);
+    let nF = 0, nRojo = 0, nAma = 0; const fallas = [];
+    const badge = (txt, kind, donde) => { nF++; const L = rmLint(txt, kind); if(L.nivel==="rojo"){ nRojo++; fallas.push([donde, kind==="meta" ? "Guion (Meta)" : "Flow", L.w, "Rojo"]); } if(L.nivel==="amarillo"){ nAma++; fallas.push([donde, kind==="meta" ? "Guion (Meta)" : "Flow", L.w, "Amarillo"]); }
+      return L.nivel==="ok" ? `<span class="okb">✓ Auditado</span>` : `<span class="${L.nivel==="rojo"?"badb":"midb"}">⚠ Revisar: “${esc(L.w)}”</span>`; };
+    const pbA = (title, adj, text, kind, donde) => { n++; return `<div class="pb"><div class="ph"><b>${esc(title)}</b>${badge(text, kind||"flow", donde||title)}<button class="cp" data-t="t${n}">Copiar</button></div>${adj ? `<div class="att">${adj}</div>` : ""}<pre id="t${n}">${esc(text)}</pre></div>`; };
+    const prodLines = `[PRODUCT]: ${S(P.lock_en)}\n[LABEL]: ${S(P.label_en, "keep the exact brand name and typography printed on the product")}`;
+    const promptP0 = `[STYLE LOCK]: clean product reference sheet, realistic product photography
+[ACTION]: ${S(P.partes_en, "the product")} shown in seven angles: front, back, left side, right side, three quarter left, three quarter right, top
+[ENVIRONMENT]: plain light grey seamless background
+[LIGHTING]: soft even studio light, no harsh reflections
+[CAMERA]: product sheet layout, all angles at the same scale
+[ASPECT]: 16:9 horizontal
+[REFERENCE]: the real product photo
+${prodLines}
+[EXCLUDE]: no other logos, no watermarks, no hands, no people`;
+
+    // --- Diálogo y ruta
+    let intro = `<h2>Hoja de ruta</h2><ol class="steps">
+<li><b>Voz:</b> usa tu voz en off original o genera una nueva en ElevenLabs o Fish Audio con el texto de abajo (recomendado: la versión segura). ${esc(S(r.sonido?.voz, "Voz colombiana de la edad del público, ritmo pausado."))}</li>
+<li><b>P0</b> (hoja de producto) una sola vez para las tres variaciones.</li>
+<li>En cada variación: <b>A1</b> → aprobar → <b>F1</b> → aprobar → <b>F2…F${D.length + 1}</b> → probar <b>C1</b> antes de generar el resto.</li>
+<li>Clips en Flow con <b>video sin sonido</b>, F1→F2, F2→F3… Cada clip cubre una frase.</li>
+<li><b>CapCut:</b> voz encima, recorta cada clip al tiempo de su frase (tabla de escaleta), subtítulos palabra por palabra y corte del ambiente cuando entra el producto. Los primeros 3 s muestran el gancho visual y los textos van en la zona segura (centro).</li>
+<li><b>Flow · imagen:</b> los 2 anuncios de imagen están en la pestaña 📣 Cómo pautar en Meta.</li></ol>
+<p class="note">País: <b>${esc(S(r.__input?.pais,"Colombia"))}</b>. ${esc(S(r.subtitulo))}. Estilo 3D estilizado igual en las tres variaciones, para que el test mida la escena y no el estilo. Las vistas por dentro del cuerpo van estilizadas (cables, tubos, luces) para que Flow no las bloquee.</p>`;
+    if(A(r.alertas).length) intro += `<div class="warn"><b>Antes de pautar:</b><br>${A(r.alertas).map((a,k)=>`${k+1}. <b>${esc(S(a.titulo))}:</b> ${esc(S(a.texto))}`).join("<br>")}</div>`;
+    intro += `<h3>El diálogo</h3><div class="tw"><table><thead><tr><th>Tiempo</th><th>Diálogo original</th><th>Versión segura (mismo largo aprox.)</th></tr></thead><tbody>${D.map(d=>`<tr><td style="white-space:nowrap">${esc(S(d.t))}</td><td>${esc(S(d.original))}</td><td>${S(d.seguro)==="igual" || !S(d.seguro) ? `<span class="same">igual</span>` : esc(S(d.seguro))}</td></tr>`).join("")}</tbody></table></div>`;
+    if(A(r.riesgos).length || r.ingredientes_nota) intro += `<div class="warn"><b>Antes de pegar la voz:</b> las frases de la columna izquierda que más riesgo tienen de rechazo en Meta, TikTok y Flow son:<br>${A(r.riesgos).map(x=>`• “${esc(S(x.frase))}”: ${esc(S(x.motivo))}`).join("<br>")}${r.ingredientes_nota ? `<br><b>Ingredientes:</b> ${esc(S(r.ingredientes_nota))}` : ""}<br>Las escenas sirven igual para las dos versiones porque cada frase conserva su idea y su tiempo.</div>`;
+    intro += pbA("Guion corrido · versión segura (para ElevenLabs/Fish Audio)", "", D.map(seg).join(" "), "meta", "Guion seguro");
+    intro += pb("Guion corrido · original corregido", "", D.map(d=>S(d.original)).join(" "));
+    if(p.regla) intro += `<div class="card"><b>Regla del producto:</b> ${esc(S(p.regla))}</div>`;
+
+    // --- Variaciones
+    const vTabs = V.map((v,k)=>{
+      const d = v.__det, vid = "v" + (k+1);
+      let s = `<h2>${esc(S(v.id))} · ${esc(S(v.nombre))} · ${esc(S(v.persona))} · ${esc(S(v.lugar))}</h2><p class="lead">${esc(S(v.descripcion))}</p><p class="tag">Lo que la separa de las otras: ${esc(S(v.separa))}</p>`;
+      if(!d) return s + `<div class="warn">Esta variación no se pudo generar. Vuelve a generar la hoja de ruta.</div>`;
+      s += `<p class="chips"><a data-goto="${vid}-anclas">Anclas</a><a data-goto="${vid}-escaleta">Escaleta</a><a data-goto="${vid}-imagenes">Imágenes</a><a data-goto="${vid}-clips">Clips</a></p>`;
+      const anc = d.ancla || {}, T = A(d.tomas), Cl = A(d.clips), ENV = S(anc.ambiente_en), INT = S(d.interior_en);
+      const promptA1 = `[STYLE LOCK]: ${STY}
+[SUBJECT]: ${S(anc.desc_en)}
+[ACTION]: standing relaxed, looking at the camera with a warm friendly soft smile, kind lively eyes, mouth closed
+[ENVIRONMENT]: ${ENV}
+[LIGHTING]: soft even light that shows the face clearly
+[CAMERA]: medium shot, waist up, front view
+[ASPECT]: 9:16 vertical
+[EXCLUDE]: ${SEG_EXCL_PER}`;
+      s += `<h3 id="${vid}-anclas">Anclas de esta variación</h3><div class="warn">P0 es la misma en las tres variaciones. Si ya la generaste, no la regeneres.</div>`;
+      s += pbA("P0 · Hoja de producto", att("Adjuntar", "foto real del producto (solo el producto, sin manos ni marcas de agua)"), promptP0, "flow", `${S(v.id)} P0`);
+      s += pbA("A1 · Ancla del personaje", att("Adjuntar", "nada. Genera varias, elige una y apruébala antes de seguir"), promptA1, "flow", `${S(v.id)} A1`);
+      s += `<h3 id="${vid}-escaleta">Escaleta frase por imagen</h3><div class="tw"><table><thead><tr><th>Tiempo</th><th>Frase</th><th>Qué se ve</th><th>Imagen / clip</th></tr></thead><tbody>${T.map((t,j)=>`<tr><td style="white-space:nowrap">${esc(S(D[j]?.t, j>=D.length ? (S(D[D.length-1]?.t).split("-")[1] || "") + " (cierre)" : ""))}</td><td>${esc(j < D.length ? seg(D[j]) : "(cierre)")}</td><td>${esc(S(t.action_en))}</td><td style="white-space:nowrap">${esc(S(t.id,"F"+(j+1)))}${j < Cl.length ? " → " + esc(S(Cl[j]?.id,"C"+(j+1))) : ""}</td></tr>`).join("")}</tbody></table></div>`;
+      s += `<h3 id="${vid}-imagenes">Imágenes F1 a F${T.length}</h3>`;
+      T.forEach((t,j)=>{
+        const id = S(t.id, "F"+(j+1)), per = !!t.persona, pro = !!t.producto, inn = !!t.interior && !per && !pro;
+        const prev = j>0 ? S(T[j-1].id, "F"+j) : "";
+        const adj = [per ? "A1" : "", prev, pro ? "P0" : ""].filter(Boolean).join(", ") || "A1";
+        const ref = [per ? "character anchor A1 (keep face, hair and clothing identical)" : "", prev ? `previous image ${prev} (keep style and palette)` : "", pro ? "product sheet P0 (keep the product identical)" : ""].filter(Boolean).join("; ");
+        const env = inn ? INT : ENV;
+        const txt = `[STYLE LOCK]: ${STY}${per ? `\n[SUBJECT]: ${S(anc.desc_en)}` : ""}
+[ACTION]: ${S(t.action_en)}${env ? `\n[ENVIRONMENT]: ${env}` : ""}
+[LIGHTING]: ${pro ? "bright warm cheerful light, hopeful uplifting mood, gentle rim light" : "soft cinematic light with a clear mood, gentle rim light"}${per && pro ? "\n[MOOD]: genuine relieved smile, energetic and confident, warm and trustworthy" : ""}
+[CAMERA]: ${S(t.camera_en, "medium shot")}
+[ASPECT]: 9:16 vertical
+[REFERENCE]: ${ref || "character anchor A1 (keep face, hair and clothing identical)"}${pro ? "\n" + prodLines : ""}
+[EXCLUDE]: ${pro ? SEG_EXCL_PROD : per ? SEG_EXCL_PER : SEG_EXCL_IN}`;
+        s += pbA(id, att("Adjuntar", adj), txt, "flow", `${S(v.id)} ${id}`);
+      });
+      s += `<h3 id="${vid}-clips">Clips C1 a C${Cl.length} · video sin sonido</h3><p class="note">Activa en Flow el <b>video sin sonido</b>: la voz va encima en el montaje. Recorta cada clip al tiempo de su frase, o ponle velocidad 0.7 si la frase dura más${d.nota_clips ? ` (${esc(S(d.nota_clips))})` : ""}.</p>`;
+      Cl.forEach((c,j)=>{
+        const id = S(c.id, "C"+(j+1)), f1 = S(T[j]?.id, "F"+(j+1)), f2 = S(T[j+1]?.id, "F"+(j+2));
+        const per = c.personaje!==undefined ? !!c.personaje : !!(T[j]?.persona || T[j+1]?.persona);
+        const pro = c.producto!==undefined ? !!c.producto : !!(T[j]?.producto || T[j+1]?.producto);
+        const txt = `[ACTION]: ${S(c.action_en)}${per ? ", all characters keep their mouths closed the whole time" : ""}
+[CAMERA]: ${S(c.camera_en, "slow push in")}
+[CONTINUITY]: ${per ? "keep the character's face, hair and clothing identical, " : ""}keep the same style, palette and lighting from the first frame to the last${pro ? `\n[PRODUCT]: ${S(P.motion_lock_en)}` : ""}
+[EXTRA]: ${SEG_EXTRA}`;
+        s += pbA(id, att("Start frame", f1) + ` · <span>End frame:</span> ${esc(f2)}${pro ? " · <span>Adjuntar:</span> P0" : ""}${c.lento ? " · <span>Velocidad:</span> 0.7" : ""}`, txt, "flow", `${S(v.id)} ${id}`);
+      });
+      return s;
+    });
+
+    // --- Auditoría
+    const au = r.auditoria || {};
+    let aud = `<h2>Auditoría de Flow y Meta</h2><div class="card"><b>${nF} bloques revisados</b> (P0, anclas, imágenes, clips y guion seguro). Revisión automática de palabras: <b>${nRojo}</b> en rojo y <b>${nAma}</b> en amarillo.${nRojo ? " Corrige los rojos antes de generar." : " Quedan 0 en rojo."}</div>`;
+    if(fallas.length) aud += `<h3>Revisión automática</h3>` + table(["Dónde","Filtro","Palabra","Nivel"], fallas);
+    if(A(au.hallazgos).length) aud += `<h3>Hallazgos y cambios</h3>` + table(["Dónde","Pase","Hallazgo","Nivel","Cambio"], A(au.hallazgos).map(h=>[h.donde, h.pase, h.hallazgo, h.nivel, h.cambio]));
+    if(A(au.amarillos).length) aud += `<h3>Amarillos que quedan, justificados</h3><ol class="steps">${A(au.amarillos).map(x=>`<li>${esc(S(x))}</li>`).join("")}</ol>`;
+    if(A(au.moderador).length) aud += `<h3>Lectura de moderador</h3><ol class="steps">${A(au.moderador).map(x=>`<li>${esc(S(x))}</li>`).join("")}</ol>`;
+    if(au.guion) aud += `<h3>Guion (Meta / TikTok)</h3><div class="card">${esc(S(au.guion))}</div>`;
+    if(A(au.referencias).length) aud += `<h3>Referencias a revisar antes de adjuntar</h3><ol class="steps">${A(au.referencias).map(x=>`<li>${esc(S(x))}</li>`).join("")}</ol>`;
+
+    const gan = A(r.ganchos).length ? `<h2>Banco de ganchos</h2><p>Cada uno reemplaza los primeros 3 segundos de una variación, con lenguaje seguro.</p>` + table(["#","Qué se ve","Qué se dice","Nivel","Va con"], A(r.ganchos).map((x,k)=>["G"+(k+1), x.ve, x.dice, x.nivel, x.va_con])) : "";
+    const tb = [["intro","Diálogo y ruta"], ...(r.meta ? [["meta","📣 Cómo pautar en Meta"]] : []), ...(A(r.imagenes_ad).length ? [["imagenes","🖼️ Anuncios de imagen"]] : []), ["mercado","Mercado y números"], ...V.map((v,k)=>["v"+(k+1), `${S(v.id,"V"+(k+1))} · ${S(v.corto, v.nombre)}`]), ["audit","Auditoría"], ...(gan ? [["ganchos","Ganchos"]] : [])];
+    const sc = [["intro",intro], ...(r.meta ? [["meta",meta]] : []), ...(A(r.imagenes_ad).length ? [["imagenes",imgs]] : []), ["mercado",merc], ...vTabs.map((x,k)=>["v"+(k+1), x]), ["audit",aud], ...(gan ? [["ganchos",gan]] : [])];
+    return `<div class="rm td"><header><h1>${esc(S(r.titulo, r.__input?.nombre || "Hoja de ruta"))}</h1><p>${esc(S(r.subtitulo))}</p>
+<nav class="tabs">${tb.map(([k,l],j)=>`<button data-k="${k}" class="${j===0?"on":""}">${esc(l)}</button>`).join("")}</nav></header>
+<main>${sc.map(([k,x],j)=>`<section class="tab${j===0?" on":""}" id="${k}">${x}</section>`).join("")}</main></div>`;
+  }
+  if(r.__radar){
+    const z = r.__radar, dk = z.dropkiller || {}, co = z.colombia || {}, an = z.angulo || {};
+    const esCO = z.tipo==="colombia";
+    let ori = (esCO ? `<h2>En testeo en Colombia: puedes entrar a competir</h2><div class="kpis">
+<div class="kpi"><span>Ventas por día</span><b>${esc(S(dk.ventas_dia,"—"))}</b></div>
+<div class="kpi"><span>Ventas en 7 días</span><b>${esc(S(dk.ventas_7d,"—"))}</b></div>` : `<h2>Gana en ${esc(S(z.pais_origen,"otro país"))}</h2><div class="kpis">
+<div class="kpi"><span>Ventas en 7 días (${esc(S(z.pais_origen))})</span><b>${esc(S(dk.ventas_7d,"—"))}</b></div>`) + `
+<div class="kpi"><span>Ventas en 30 días</span><b>${esc(S(dk.ventas_30d,"—"))}</b></div>
+<div class="kpi"><span>Stock del proveedor</span><b>${esc(S(dk.stock,"—"))}</b></div>
+<div class="kpi"><span>${esCO ? "Precio de la competencia" : "Precio de venta allá"}</span><b>${esc(S(dk.precio_venta,"—"))}</b></div>
+<div class="kpi"><span>Tendencia</span><b>${esc(S(dk.tendencia,"—"))}</b></div>
+<div class="kpi"><span>Visto en Dropkiller</span><b>${esc(fmtDia(z.fecha || r.__fecha || ""))}</b></div></div>`;
+    if(dk.nota) ori += `<div class="card">${linkify(S(dk.nota))}</div>`;
+    if(A(z.filtro).length){
+      const ic = e => e==="ok" ? "✅" : e==="no" ? "❌" : "⚠️";
+      ori += `<h3>Filtro de rentabilidad</h3><p>Para que no sea solo un producto curioso: 7 pruebas de que puede dejar plata con contraentrega y WhatsApp.</p>` + table(["","Criterio","Evidencia"], A(z.filtro).map(c=>[ic(c.estado), c.criterio, c.nota]));
+    }
+    if(A(z.anti_curiosos).length) ori += `<h3>Para que escriban compradores y no curiosos</h3><ol class="steps">${A(z.anti_curiosos).map(x=>`<li>${esc(S(x))}</li>`).join("")}</ol>`;
+    ori += `<h3>En Colombia</h3><div class="card"><b>Estado:</b> ${esc(S(co.estado,"Sin testear"))}<br><b>Proveedores en Dropi:</b> ${esc(S(co.proveedores,"—"))}<br><b>Ventas en Colombia (7 días):</b> ${esc(S(co.ventas_7d,"—"))}<br><b>Costo en Dropi:</b> ${esc(S(co.costo,"—"))}${co.nota ? "<br>" + esc(S(co.nota)) : ""}</div>`;
+    ori += `<h3>Cómo lo están vendiendo</h3><div class="card"><b>Ángulo:</b> ${esc(S(an.como_lo_venden))}<br><b>Gancho del anuncio:</b> ${esc(S(an.gancho))}<br><b>Oferta:</b> ${esc(S(an.oferta))}${an.anuncio_url ? "<br><b>Anuncio:</b> " + linkify(S(an.anuncio_url)) : ""}</div>`;
+    if(A(z.ideas).length) ori += `<h3>Cómo lo venderías aquí</h3><ol class="steps">${A(z.ideas).map(x=>`<li>${esc(S(x))}</li>`).join("")}</ol>`;
+    if(A(r.alertas).length) ori += `<div class="warn"><b>Antes de testear:</b><br>${A(r.alertas).map((a,k)=>`${k+1}. <b>${esc(S(a.titulo))}:</b> ${esc(S(a.texto))}`).join("<br>")}</div>`;
+    ori += `<div class="card">¿Te gusta? En el panel toca <b>Crear hoja de ruta</b> en este producto y Claude arma las variaciones, los prompts y la pestaña de Meta.</div>`;
+    const tb = [["origen","Por qué es ganador"],["mercado","Análisis para Colombia"]], sc = [["origen",ori],["mercado",merc]];
+    return `<div class="rm"><header><h1>${esc(S(r.titulo, r.__input?.nombre || "Producto del radar"))}</h1><p>${esc(S(r.subtitulo))}</p>
+<nav class="tabs">${tb.map(([k,l],j)=>`<button data-k="${k}" class="${j===0?"on":""}">${esc(l)}</button>`).join("")}</nav></header>
+<main>${sc.map(([k,x],j)=>`<section class="tab${j===0?" on":""}" id="${k}">${x}</section>`).join("")}</main></div>`;
+  }
+  const sections = [["inicio",inicio], ...(r.meta ? [["meta",meta]] : []), ...(A(r.imagenes_ad).length ? [["imagenes",imgs]] : []), ["mercado",merc], ...varTabs.map((s,k)=>["v"+(k+1), s]), ["ganchos",ganchos]];
+  return `<div class="rm"><header><h1>${esc(S(r.titulo, r.__input?.nombre || "Hoja de ruta"))}</h1><p>${esc(S(r.subtitulo))}</p>
+<nav class="tabs">${tabs.map(([k,l],j)=>`<button data-k="${k}" class="${j===0?"on":""}">${esc(l)}</button>`).join("")}</nav></header>
+<main>${sections.map(([k,s],j)=>`<section class="tab${j===0?" on":""}" id="${k}">${s}</section>`).join("")}</main></div>`;
+}
+function rmDocument(r){
+  const title = esc(S(r.titulo, "Hoja de ruta"));
+  return `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>${title}</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,800&family=DM+Sans:wght@400;700;800&display=swap" rel="stylesheet"><style>html,body{margin:0;background:${r.modo==="seguro" ? "#f6f4ef" : "#FBF3E4"}}${RM_CSS}${r.modo==="seguro" ? TD_CSS : ""}</style></head><body>${rmBody(r)}<script>${RM_SCRIPT}<\/script></body></html>`;
+}
+
+function rmShow(r){
+  rmCurrent = r;
+  const host = $("#rmHost"); const root = host.shadowRoot || host.attachShadow({mode:"open"});
+  root.innerHTML = `<style>${RM_CSS}${r.modo==="seguro" ? TD_CSS : ""}</style>${rmBody(r)}`;
+  root.querySelectorAll("[data-goto]").forEach(a=>a.addEventListener("click", ()=>{ const el = root.getElementById(a.dataset.goto); if(el) el.scrollIntoView({behavior:"smooth", block:"start"}); }));
+  const showTab = k => { root.querySelectorAll("section.tab").forEach(s=>s.classList.toggle("on", s.id===k)); root.querySelectorAll("nav.tabs button").forEach(b=>b.classList.toggle("on", b.dataset.k===k)); reveal("rmView"); };
+  root.querySelectorAll("nav.tabs button").forEach(b=>b.addEventListener("click", ()=>showTab(b.dataset.k)));
+  root.querySelectorAll("button.cp").forEach(b=>b.addEventListener("click", async ()=>{
+    const pre = root.getElementById(b.dataset.t); const t = pre.innerText;
+    try{ await navigator.clipboard.writeText(t); b.textContent="Copiado"; b.classList.add("ok"); }
+    catch{ const rg=document.createRange(); rg.selectNodeContents(pre); const s=getSelection(); s.removeAllRanges(); s.addRange(rg); b.textContent="Ctrl+C"; }
+    setTimeout(()=>{ b.textContent="Copiar"; b.classList.remove("ok"); }, 1600);
+  }));
+  $("#rmViewTitle").textContent = S(r.titulo, "Hoja de ruta");
+  $("#rmDownload").hidden = false; $("#rmToCalc").hidden = !!r.__radar;
+  $("#rmView").hidden = false; reveal("rmView");
+}
+$("#rmClose").addEventListener("click", ()=>{ $("#rmView").hidden = true; rmCurrent = null; });
+$("#rmToCalc").addEventListener("click", ()=>{ const x = data.roadmaps.find(y=>y.r===rmCurrent); if(x) calcFromRoadmap(x); });
+$("#rmDownload").addEventListener("click", async ()=>{
+  if(!rmCurrent) return;
+  const b = $("#rmDownload");
+  const name = "Hoja_de_ruta_" + norm(S(rmCurrent.__input?.nombre,"producto")).replace(/[^a-z0-9]+/g,"_").replace(/^_|_$/g,"").slice(0,40) + "_variaciones_ganador.html";
+  const blob = new Blob([rmDocument(rmCurrent)], {type:"text/html"});
+  try{
+    if(downloads) await downloads.save({filename:name, data:blob});
+    else { const u = URL.createObjectURL(blob); const l = document.createElement("a"); l.href = u; l.download = name; document.body.appendChild(l); l.click(); l.remove(); setTimeout(()=>URL.revokeObjectURL(u), 4000); }
+    b.textContent = "Descargado";
+  }
+  catch{ b.textContent = "No se descargó"; }
+  setTimeout(()=>b.textContent="Descargar HTML", 2000);
+});
+
+function renderRoadmaps(){
+  const L = data.roadmaps;
+  $("#rmList").innerHTML = L.length ? L.map(x=>`<li data-id="${esc(x.id)}"><button class="open" type="button"><b>${esc(S(x.nombre))}</b><span>${fmtDate(x.at)} · ${esc(S(x.r?.mercado?.veredicto,"").slice(0,60))}</span></button><span class="pct">${Math.round(+x.r?.mercado?.potencial_pct||0)}%</span><button class="x" type="button" aria-label="Eliminar hoja de ruta" title="Eliminar">×</button></li>`).join("")
+    : `<li class="empty-s">Aquí quedarán tus hojas de ruta para abrirlas, copiarlas o descargarlas cuando quieras.</li>`;
+  renderProducts(); renderHome();
+}
+$("#rmList").addEventListener("click", e=>{
+  const li = e.target.closest("li[data-id]"); if(!li) return;
+  if(e.target.closest(".x")){
+    data.roadmaps = data.roadmaps.filter(x=>x.id!==li.dataset.id); rmPersistLocal();
+    if(cloud) enqueue("rm_"+li.dataset.id, ()=>db.collection("roadmaps").doc(li.dataset.id).delete());
+    renderRoadmaps(); return;
+  }
+  const x = data.roadmaps.find(y=>y.id===li.dataset.id); if(x) rmShow(x.r);
+});
+function rmPersistLocal(){ store.set("ac.roadmaps", data.roadmaps.slice(0,12)); }
+function rmSave(item){
+  data.roadmaps.unshift(item); rmPersistLocal(); renderRoadmaps();
+  if(cloud && JSON.stringify(item).length < 240000) enqueue("rm_"+item.id, ()=>db.collection("roadmaps").doc(item.id).set(item));
+}
+
+const rmStepsEl = $("#rmSteps"), rmLog = $("#rmLog");
+function rmSteps(list){ rmStepsEl.innerHTML = list.map((s,k)=>`<li id="rms${k}">${esc(s)}</li>`).join(""); }
+function rmStep(k, cls){ const li = $("#rms"+k); if(li) li.className = cls; }
+function rmLogLine(m){ rmLog.textContent += (rmLog.textContent ? "\n" : "") + "› " + m; rmLog.scrollTop = rmLog.scrollHeight; }
+
+$("#rmStop").addEventListener("click", ()=>rmCtrl?.abort());
+$("#rmForm").addEventListener("submit", async e=>{
+  e.preventDefault();
+  if(!sample){ rmSteps([aiErr({code:"no_ai"})]); rmStep(0,"bad"); return; }
+  const fd = new FormData(e.currentTarget);
+  const file = $("#rmFoto").files?.[0] || null;
+  // Regla de Andrés: si no pone precio, se vende a costo + $75.000 terminado en 900 (14.000 → 89.900).
+  const reglaPrecio = c => c > 0 ? Math.floor((c + 75000) / 1000) * 1000 + 900 : 0;
+  const i = {nombre:S(fd.get("nombre")).trim(), hace:S(fd.get("hace")).trim(), costo:+fd.get("costo")||0, precio:+fd.get("precio")||reglaPrecio(+fd.get("costo")||0),
+    flete:+fd.get("flete")||0, devol:+fd.get("devol")||0, pais:S(fd.get("pais"),"Colombia"), temporada:S(fd.get("temporada")).trim(),
+    ganador:S(fd.get("ganador")).trim(), competidores:S(fd.get("competidores")).trim(), foto: !!(file && imagesOk),
+    cierre: S(fd.get("cierre"),"whatsapp"), modoSel: S(fd.get("modo"),"auto"),
+    web: fd.get("__web")==="on" && webOk && toolsOk};
+  const ctrl = rmCtrl = new AbortController();
+  const tierUse = tier==="quick" ? "default" : tier;
+  $("#rmGen").disabled = true; $("#rmGen").textContent = "Generando…"; $("#rmStop").hidden = false; rmLog.textContent = "";
+  i.modo = i.modoSel==="seguro" || (i.modoSel==="auto" && rmIsSensible(i)) ? "seguro" : "normal";
+  if(i.modo==="seguro") return rmGenerarSeguro(i, file);
+  rmSteps([i.web ? "Investigando mercado y competencia en la web" : "Analizando mercado (sin web)", "Variación 1 · muy consciente", "Variación 2 · medianamente consciente", "Variación 3 · no consciente", "Meta Ads, textos y 4 anuncios de imagen", "Armando la hoja de ruta"]);
+  rmStep(0,"run");
+  try{
+    const opts = {modelTier:tierUse, signal:ctrl.signal};
+    if(i.web) opts.tools = webTools(rmLogLine); else opts.cache = false;
+    if(IS_LOCAL || KEY_MODE) opts.__status = rmLogLine;
+    if(i.foto) opts.images = [file];
+    const r = await sample.json(rmMainPrompt(i), opts);
+    if(!r || typeof r!=="object" || !r.producto) throw {code:"invalid_json"};
+    r.__input = i; r.__precio = i.precio || +r.mercado?.precio_sugerido || 0;
+    rmStep(0,"ok"); rmLogLine(`Potencial para testear: ${Math.round(+r.mercado?.potencial_pct||0)}%`);
+    const vs = A(r.variaciones).slice(0,3);
+    vs.forEach((_,k)=>rmStep(k+1,"run")); rmStep(4,"run");
+    r.variaciones = vs;
+    const imgJob = sample.json(rmImgPrompt(i, r), {modelTier:tierUse, signal:ctrl.signal, cache:false})
+      .then(d=>{ if(d && A(d.modelos).length){ r.imagenes_ad = A(d.modelos).slice(0,4); rmLogLine("4 anuncios de imagen listos"); } })
+      .catch(err=>{ if(err?.code==="cancelled") throw err; rmLogLine(`Anuncios de imagen: ${aiErr(err)}`); });
+    const metaJob = sample.json(rmMetaPrompt(i, r), {modelTier:tierUse, signal:ctrl.signal, cache:false})
+      .then(d=>{ if(d && typeof d==="object" && (d.recomendacion || d.campana)){ r.meta = d; rmStep(4,"ok"); } else rmStep(4,"bad"); })
+      .catch(err=>{ if(err?.code==="cancelled") throw err; rmStep(4,"bad"); rmLogLine(`Meta Ads: ${aiErr(err)}`); });
+    await Promise.all([metaJob, imgJob, ...vs.map((v,k)=>sample.json(rmVarPrompt(i, r, v), {modelTier:tierUse, signal:ctrl.signal, cache:false})
+      .then(d=>{ if(d && typeof d==="object"){ v.__det = d; rmStep(k+1,"ok"); } else rmStep(k+1,"bad"); })
+      .catch(err=>{ if(err?.code==="cancelled") throw err; rmStep(k+1,"bad"); rmLogLine(`${S(v.id)}: ${aiErr(err)}`); }))]);
+    rmStep(5,"run");
+    const item = {id:uid(), nombre:i.nombre, at:Date.now(), r};
+    rmSave(item); rmStep(5,"ok");
+    rmShow(r);
+  }catch(err){
+    if(err?.code==="cancelled"){ rmLogLine("Detenido."); }
+    else { rmLogLine(err?.code==="invalid_json" ? "La respuesta no llegó completa. Prueba de nuevo o usa el modo Profundo." : aiErr(err)); }
+    rmStepsEl.querySelectorAll("li.run").forEach(li=>li.className="bad");
+  }finally{
+    if(rmCtrl===ctrl){ rmCtrl = null; $("#rmGen").disabled = false; $("#rmGen").textContent = "Generar hoja de ruta"; $("#rmStop").hidden = true; }
+  }
+});
+async function rmGenerarSeguro(i, file){
+  const ctrl = rmCtrl = new AbortController();
+  const tierUse = tier==="quick" ? "default" : tier;
+  $("#rmGen").disabled = true; $("#rmGen").textContent = "Generando…"; $("#rmStop").hidden = false; rmLog.textContent = "";
+  rmSteps(["Modo seguro (producto natural o de salud): " + (i.web ? "investigando mercado y competencia" : "analizando mercado sin web") + " y escribiendo el diálogo seguro", "Variación 1 · escena", "Variación 2 · escena", "Variación 3 · escena", "Meta Ads y 4 anuncios de imagen con lenguaje seguro", "Auditoría de Flow y Meta", "Armando la hoja de ruta"]);
+  rmStep(0,"run");
+  try{
+    const opts = {modelTier:tierUse, signal:ctrl.signal};
+    if(i.web) opts.tools = webTools(rmLogLine); else opts.cache = false;
+    if(IS_LOCAL || KEY_MODE) opts.__status = rmLogLine;
+    if(i.foto) opts.images = [file];
+    const r = await sample.json(rmMainPromptSeguro(i), opts);
+    if(!r || typeof r!=="object" || !A(r.dialogo).length) throw {code:"invalid_json"};
+    r.modo = "seguro"; r.__input = i; r.__precio = i.precio || +r.mercado?.precio_sugerido || 0;
+    rmStep(0,"ok"); rmLogLine(`Diálogo de ${A(r.dialogo).length} frases · potencial ${Math.round(+r.mercado?.potencial_pct||0)}%`);
+    const vs = A(r.variaciones).slice(0,3); r.variaciones = vs;
+    vs.forEach((_,k)=>rmStep(k+1,"run")); rmStep(4,"run");
+    const imgJob = sample.json(rmImgPrompt(i, r), {modelTier:tierUse, signal:ctrl.signal, cache:false})
+      .then(d=>{ if(d && A(d.modelos).length){ r.imagenes_ad = A(d.modelos).slice(0,4); rmLogLine("4 anuncios de imagen listos"); } })
+      .catch(err=>{ if(err?.code==="cancelled") throw err; rmLogLine(`Anuncios de imagen: ${aiErr(err)}`); });
+    const metaJob = sample.json(rmMetaPrompt(i, r), {modelTier:tierUse, signal:ctrl.signal, cache:false})
+      .then(d=>{ if(d && typeof d==="object" && (d.recomendacion || d.campana)){ r.meta = d; rmStep(4,"ok"); } else rmStep(4,"bad"); })
+      .catch(err=>{ if(err?.code==="cancelled") throw err; rmStep(4,"bad"); rmLogLine(`Meta Ads: ${aiErr(err)}`); });
+    await Promise.all([metaJob, imgJob, ...vs.map((v,k)=>sample.json(rmVarPromptSeguro(i, r, v), {modelTier:tierUse, signal:ctrl.signal, cache:false})
+      .then(d=>{ if(d && typeof d==="object" && A(d.tomas).length){ v.__det = d; rmStep(k+1,"ok"); } else rmStep(k+1,"bad"); })
+      .catch(err=>{ if(err?.code==="cancelled") throw err; rmStep(k+1,"bad"); rmLogLine(`${S(v.id)}: ${aiErr(err)}`); }))]);
+    rmStep(5,"run");
+    try{ const au = await sample.json(rmAuditPromptSeguro(i, r), {modelTier:tierUse, signal:ctrl.signal, cache:false}); if(au && typeof au==="object") r.auditoria = au; rmStep(5,"ok"); }
+    catch(err){ if(err?.code==="cancelled") throw err; rmStep(5,"bad"); rmLogLine("Auditoría: " + aiErr(err) + " (queda la revisión automática de palabras)"); }
+    rmStep(6,"run");
+    const item = {id:uid(), nombre:i.nombre, at:Date.now(), r};
+    rmSave(item); rmStep(6,"ok");
+    rmShow(r);
+  }catch(err){
+    if(err?.code==="cancelled"){ rmLogLine("Detenido."); }
+    else { rmLogLine(err?.code==="invalid_json" ? "La respuesta no llegó completa. Prueba de nuevo o usa el modo Profundo." : aiErr(err)); }
+    rmStepsEl.querySelectorAll("li.run").forEach(li=>li.className="bad");
+  }finally{
+    if(rmCtrl===ctrl){ rmCtrl = null; $("#rmGen").disabled = false; $("#rmGen").textContent = "Generar hoja de ruta"; $("#rmStop").hidden = true; }
+  }
+}
+function rmModoPaint(){
+  const el = $("#rmModoInfo"); if(!el) return;
+  const sel = $("#rmModo")?.value || "auto", t = rmTipoProducto({nombre:$("#rmNombre")?.value, hace:$("#rmHace")?.value});
+  el.textContent = sel==="normal" ? "Se arma con prompts normales: 3 variaciones por nivel de conciencia, imágenes y clips realistas."
+    : sel==="seguro" ? "Se arma en modo seguro: animación 3D, mismo diálogo en versión segura para Meta y auditoría."
+    : t.seguro ? "Detectado: natural o medicinal (" + t.razon + "). Se arma en animación 3D con el diálogo seguro para Meta."
+    : "Detectado: producto normal. Se arma con los prompts normales de siempre (realistas, 3 niveles de conciencia).";
+}
+["rmNombre","rmHace","rmModo"].forEach(id=>{ const el = document.getElementById(id); if(el){ el.addEventListener("input", rmModoPaint); el.addEventListener("change", rmModoPaint); } });
+setTimeout(rmModoPaint, 0);
+function rmCaps(){
+  $("#rmFoto").disabled = !imagesOk;
+  $("#rmFotoLbl").firstChild.textContent = imagesOk ? "Foto real del producto del proveedor (opcional, mejora los prompts)" : "Foto del producto (disponible al abrir el panel en Claude)";
+  const w = $("#rmWeb"), ok = webOk && toolsOk; w.disabled = !ok; if(!ok) w.checked = false;
+  $("#rmWebNote").textContent = ok ? "Competencia y precios reales" : "Solo en la app de escritorio de Claude";
+}
+async function rmLoadCloud(){
+  if(!cloud) return;
+  try{
+    const s = await db.collection("roadmaps").orderBy("at","desc").limit(30).get();
+    if(!s.empty){ data.roadmaps = rmFresh(s.docs.map(d=>({...d.data(), id:d.id}))); rmPersistLocal(); }
+    else data.roadmaps.forEach(it=>enqueue("rm_"+it.id, ()=>db.collection("roadmaps").doc(it.id).set(it)));
+    renderRoadmaps();
+  }catch{}
+}
+renderRoadmaps();
+
+/* ================= Arranque ================= */
+renderTasks(); renderSaved(); renderStudio(); renderChat();
+go(location.hash.slice(1) || store.get("ac.view","inicio"), false);
+if(!window.claude && !IS_LOCAL){ $("#offline").hidden = false; }
+setPill("pillAI","", "IA: conectando…");
+initDb();
+(async()=>{
+  if(IS_LOCAL){
+    setPill("pillAI","", "IA: revisando tu cuenta de Claude…");
+    let st = null; try{ st = await localStatus(false); }catch{}
+    if(!st?.loggedIn){
+      setPill("pillAI","bad","IA: falta iniciar sesión");
+      const o = $("#offline"); o.hidden = false;
+      o.innerHTML = `<b>Falta conectar tu cuenta de Claude en este PC.</b> Abre <b>"Conectar mi cuenta de Claude"</b> en la carpeta <b>nueva herramienta</b> del Escritorio, inicia sesión en la ventana que se abre y vuelve aquí. <button type="button" class="lockbtn" id="relogin">Ya inicié sesión</button>`;
+      $("#relogin").addEventListener("click", async e=>{ e.currentTarget.textContent = "Revisando…"; const s2 = await localStatus(true).catch(()=>null); if(s2?.loggedIn) location.reload(); else e.currentTarget.textContent = "Aún no está conectada · reintentar"; });
+      renderWebPill(); return;
+    }
+    sample = makeLocalSample(); toolsOk = true; webOk = true; imagesOk = false; downloads = null;
+    setPill("pillAI","ok","IA: Claude conectado en tu PC");
+    renderWebPill(); rmCaps();
+    return;
+  }
+  try{ sample = await window.claude?.use?.("sample"); }catch{ sample = null; }
+  if(!sample){
+    $("#iaBtn").hidden = false;
+    if(gReady()) $("#gBtnBanner").hidden = false;
+    const c = keyCfg();
+    if(c && c.auth==="google"){
+      if(!gTok()){
+        // Permiso vencido: renovar al abrir sin pedir nada (si la sesión de Google sigue abierta). Si Google pide algo, mostrar Reconectar.
+        if(!G_BACK || G_BACK.ok){ setPill("pillAI","", "IA: conectando con Google…"); gRedirect("none"); return; }
+        keyConnect(c, true); gNeedReconnect(); return;
+      }
+      keyConnect(c, true);
+      fetch("https://www.googleapis.com/oauth2/v3/userinfo", {headers:{authorization:"Bearer " + gTok().token}}).then(r=>r.json()).then(u=>{ if(u.email){ const t = store.get("ac.gtok", null); store.set("ac.gtok", {...t, email:u.email}); keyConnect(keyCfg(), true); } }).catch(()=>{});
+      if(G_BACK?.ok) toast("Listo: Gemini conectado con tu cuenta de Google. Ya puedes usar todo el panel.");
+      setTimeout(()=>{ if(KEY_MODE?.auth==="google" && !gTok()) gNeedReconnect(); }, Math.max(0, store.get("ac.gtok", {exp:0}).exp - Date.now() - 60000));
+      return;
+    }
+    if(G_BACK && !G_BACK.ok && !G_BACK.silent){
+      if(G_BACK.error==="falta_permiso"){ const o = $("#offline"); o.hidden = false; setPill("pillAI","warn","IA: falta el permiso de Gemini"); toast("Google no dio el permiso de Gemini. Toca “Entrar con Google” otra vez y, en la pantalla de permisos, marca TODAS las casillas antes de Continuar."); renderWebPill(); return; }
+      else toast("No se completó el inicio de sesión con Google (" + G_BACK.error + "). Inténtalo otra vez.");
+    }
+    if(c && c.key){ keyConnect(c, true); return; }
+    setPill("pillAI","bad","IA: conecta tu IA"); $("#offline").hidden = false; renderWebPill(); return;
+  }
+  setPill("pillAI","ok","IA: Claude conectado");
+  const lim = await sample.limits().catch(()=>null);
+  toolsOk = !!lim?.tools; imagesOk = !!lim?.images;
+  try{ downloads = await window.claude?.use?.("downloads"); }catch{ downloads = null; }
+  try{ mcp = await window.claude?.use?.("mcp"); }catch{ mcp = null; }
+  if(mcp && toolsOk){
+    const lt = await mcp.listTools().catch(()=>null);
+    webOk = !!lt?.servers?.some(s=>s.server===BROWSER);
+  }
+  renderWebPill();
+  if(stLast) $("#stTasks").disabled = false;
+})();
+</script>
++Math.round(n).toLocaleString('es-CO')}
+function pick(i){sel=i;$('.offer').forEach(function(o){o.classList.toggle('is-selected',+o.dataset.pack===i)});var t=$('#fpTot');if(t)t.textContent=money(P[i].p);var s=$('#fpSel');if(s)s.textContent=P[i].t}
+$('.offer').forEach(function(o){o.onclick=function(){pick(+o.dataset.pack)}});
+function open(i){if(i!=null)pick(i);$('#ov').classList.add('on');try{if(window.fbq)fbq('track','InitiateCheckout')}catch(e){}}
+$('[data-buy]').forEach(function(b){b.onclick=function(){open(b.dataset.buy===''?null:+b.dataset.buy)}});
+$('#ov').onclick=function(e){if(e.target.id==='ov'||e.target.classList.contains('x'))$('#ov').classList.remove('on')};
+$('#fpGo').onclick=function(){var f={cel:$('#fCel').value.replace(/\\D/g,''),nom:$('#fNom').value.trim(),dep:$('#fDep').value,ciu:$('#fCiu').value.trim(),dir:$('#fDir').value.trim(),bar:$('#fBar').value.trim()};var e=$('#fpErr');
+if(!/^3\\d{9}$/.test(f.cel))return e.textContent='Escribe un celular de 10 dígitos que empiece por 3';if(f.nom.split(' ').length<2)return e.textContent='Escribe tu nombre y apellido';if(!f.dep)return e.textContent='Selecciona tu departamento';if(!f.ciu)return e.textContent='Escribe tu municipio o ciudad';if(f.dir.length<5)return e.textContent='Escribe tu dirección con número';e.textContent='';
+var m='Hola, quiero hacer este pedido 🛒\\n\\n*'+NAME+'*\\n'+P[sel].t+': *'+money(P[sel].p)+'* (envío gratis, pago contra entrega)\\n\\nNombre: '+f.nom+'\\nCelular: '+f.cel+'\\nDepartamento: '+f.dep+'\\nCiudad: '+f.ciu+'\\nDirección: '+f.dir+(f.bar?'\\nBarrio / referencia: '+f.bar:'');
+try{if(window.fbq)fbq('track','Lead',{value:P[sel].p,currency:'COP'})}catch(x){}
+if(!WA){alert('Falta configurar el WhatsApp de la tienda en el Arsenal.');return}location.href='https://wa.me/'+WA+'?text='+encodeURIComponent(m)};
+var st=$('.sticky'),bb=$('.buy .cta');if(st&&bb&&'IntersectionObserver' in window){new IntersectionObserver(function(es){st.classList.toggle('off',es[0].isIntersecting)}).observe(bb)}
+})();`;
+  const pix = pixel ? `<script>!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','${pixel}');fbq('track','PageView');<\/script>` : "";
+  return `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>${esc(marca)} · ${esc(S(L.nombre_largo, r.__input?.nombre))}</title><meta name="description" content="${esc(S(L.pregunta))}">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=${T.gf}&display=swap" rel="stylesheet"><style>${css}</style>${pix}</head><body><div class="lp">
+<div class="topbar"><div class="track">${[...top, ...top].map(t=>`<span>${esc(S(t))}</span>`).join("")}</div></div>
+<div class="nav">${esc(marca)}</div>
+${G.length ? `<div class="gal"><div class="gtrack">${G.map(f=>lpFoto(f, fotos)).join("")}</div></div><div class="thumbs">${G.map((f,j)=>`<button type="button" class="${j?"":"on"}" aria-label="Foto ${j+1}">${lpFoto(f, fotos)}</button>`).join("")}</div>` : ""}
+<div class="buy">${L.kicker ? `<p class="kicker">${esc(S(L.kicker))}</p>` : ""}<h1>${lpEm(L.titular)}</h1>${L.pregunta ? `<p class="hook2">${lpEm(L.pregunta)}</p>` : ""}
+<ul class="ben">${A(L.beneficios).slice(0,5).map(b=>`<li>${lpEm(b)}</li>`).join("")}</ul>
+<div class="pricebar"><div><div class="k">${seguro ? "Precio" : "Precio de temporada"}</div><div class="p">${money(P1.precio)}</div><div class="k" style="color:var(--muted)">${esc(P1.titulo)}</div></div><div class="r">🚚 Envío gratis<br>💵 Pagas al recibir<br>📦 Producto sellado</div></div>
+${packs[1] ? `<button type="button" class="combo" data-buy="1">🎁 Lleva ${esc(packs[1].titulo.toLowerCase())} por <b>${money(packs[1].precio)}</b> y ahorra ${money(packs[1].ahorro)} →</button>` : ""}
+<button type="button" class="cta" data-buy=""><b>${esc(cta)}</b><small>Envío gratis y pago contra entrega</small></button>
+<div class="mini"><span>Envío gratis</span><span>Pagas al recibir</span><span>Llega en 2 a 5 días</span></div></div>
+${tick.length ? `<div class="tick"><div class="track">${[...tick, ...tick].map(t=>`<span>${esc(S(t.e))} ${esc(S(t.t))}</span>`).join("")}</div></div>` : ""}
+${secciones}
+<section class="sec deep" id="oferta"><div class="wrap"><p class="eyebrow">${seguro ? "PÍDELO HOY" : "OFERTA DE TEMPORADA"}</p><h2>${lpEm(S(L.oferta_titulo, "Tu " + marca + " en la puerta de tu casa"))}</h2><p class="lead">Envío gratis y pagas en efectivo cuando te lo entreguen.</p><div class="offers">${offer}</div><button type="button" class="cta" data-buy=""><b>HACER MI PEDIDO</b><small>Pagas cuando te llegue</small></button></div></section>
+${A(L.faq).length ? `<section class="sec b1"><div class="wrap"><p class="eyebrow">PREGUNTAS FRECUENTES</p><h2>Resolvemos tus dudas</h2>${A(L.faq).map(f=>`<details><summary>${esc(S(f.q))}</summary><p>${esc(S(f.a))}</p></details>`).join("")}</div></section>` : ""}
+<section class="sec deep final"><div class="wrap"><h2>${lpEm(S(L.cierre?.titulo, "Pídelo hoy"))}</h2><p class="lead">${esc(S(L.cierre?.sub, "Te llega gratis y lo pagas cuando lo recibas."))}</p><button type="button" class="cta" data-buy=""><b>${esc(cta)}</b><small>Envío gratis y pago contra entrega</small></button><div class="mini" style="color:var(--deeptxt)"><span>Envío gratis</span><span>Pagas al recibir</span><span>Producto sellado</span></div></div></section>
+<p class="legal">${esc(marca)} · ${esc(S(L.nombre_largo))}. ${esc(S(L.legal, seguro ? "No es un medicamento ni reemplaza la consulta médica. Los resultados varían según cada persona. Las fotos son de referencia." : "Las fotos son de referencia."))}</p>
+<button type="button" class="cta sticky off" data-buy=""><b>${esc(cta)}</b><small>Pago contra entrega · Envío gratis</small></button>
+</div>
+<div class="ov" id="ov"><div class="fp" role="dialog" aria-label="Hacer pedido"><button type="button" class="x" aria-label="Cerrar">×</button><h3>${esc(marca)}</h3><p class="s" style="margin:0 0 8px;color:var(--muted)">✓ Pagas al recibir · ✓ Envío gratis</p>
+<label>¿Cuántos quieres?</label><div class="offers">${offer}</div>
+<label for="fCel">Celular con WhatsApp</label><input id="fCel" inputmode="numeric" autocomplete="tel" placeholder="3001234567">
+<label for="fNom">Nombre y apellido</label><input id="fNom" autocomplete="name">
+<label for="fDep">Departamento</label><select id="fDep"><option value="">Selecciona tu departamento</option>${LP_DEPTOS.map(d=>`<option>${d}</option>`).join("")}</select>
+<label for="fCiu">Municipio o ciudad</label><input id="fCiu" autocomplete="address-level2">
+<label for="fDir">Dirección completa</label><input id="fDir" autocomplete="street-address" placeholder="Calle 10 # 20-30">
+<label for="fBar">Barrio o punto de referencia</label><input id="fBar">
+<p class="err" id="fpErr"></p><div class="tot"><span id="fpSel">${esc(packs[sel].titulo)}</span><span id="fpTot">${money(packs[sel].precio)}</span></div>
+<button type="button" class="cta" id="fpGo"><b>CONFIRMAR PEDIDO</b><small>Pagas cuando te llegue</small></button><p class="priv">🔒 Tus datos solo se usan para entregar tu pedido.</p></div></div>
+<script>${script}<\/script></body></html>`;
+}
+/* Pestaña "🛒 Landing" de la hoja de ruta (en el panel se le agregan los controles con lpWire). */
+function lpTabHTML(r, pb){
+  const css = `<style>.lp-frame{display:block;width:100%;max-width:430px;height:820px;margin:10px auto 18px;border:1px solid #E6D6B8;border-radius:22px;background:#fff;box-shadow:0 20px 40px -26px rgba(0,0,0,.5)}.lp-ctrl{display:grid;gap:10px;margin:12px 0}.lp-ctrl label{display:grid;gap:4px;font-weight:700;font-size:.9rem}.lp-ctrl input{padding:10px 12px;border:1px solid #D9C7A6;border-radius:10px;font:inherit}.lp-ctrl .row{display:flex;flex-wrap:wrap;gap:8px}.lp-ctrl button,.lp-gen,.lp-up button{padding:10px 14px;border-radius:10px;border:1px solid #4A0D18;background:#fff;color:#4A0D18;font-weight:800;cursor:pointer;font:inherit;font-weight:800}.lp-ctrl button.pri,.lp-gen{background:#4A0D18;color:#fff}.lp-ctrl .st{font-size:.88rem;padding:10px 12px;border-radius:10px;background:#F3E6CC}.lp-up{display:inline-flex;align-items:center;gap:8px;margin-left:6px}.lp-up img{width:44px;height:44px;object-fit:cover;border-radius:8px}</style>`;
+  if(!r.landing) return css + `<h2>🛒 Landing de ventas</h2><div class="card">Esta hoja de ruta todavía no tiene landing. Se arma con la misma estructura de tus landings ganadoras de Lo Máximo, acorde a este producto. <button type="button" class="lp-gen">🛒 Generar la landing</button></div>`;
+  const L = r.landing, T = LP_TEMAS[L.tema] || {}, slots = lpSlots(r), seguro = r.modo==="seguro";
+  const tipos = {problema:"El problema", ya_probaste:"Lo que ya probaste", como_se_usa:"Así se usa", etiqueta:"Lo que dice la etiqueta", no_es_para:"No es para todos / es para ti si", para_quien:"Para quién es", galeria_uso:"Así lo vas a recibir", urgencia:"Cuenta regresiva", como_funciona:"Así funciona", escena:"Lo que va a pasar", donde:"Dónde ponerlo", comparacion:"La diferencia", regalo:"El regalo", que_trae:"Lo que te llega"};
+  return css + `<h2>🛒 Landing de ventas · ${esc(S(L.marca))}</h2>
+<div class="card hero"><div class="big" style="font-size:1.6rem">🛒</div><div>Es la misma estructura de tus landings ganadoras (${seguro ? "familia salud: TinniDrop, Revela, AMUA" : "familia normal: Parrandero, Meduluz"}), con el tema <b>${esc(S(T.n, L.tema))}</b>. Tiene paquetes de 1, 2 y 3 con tu costeo y el formulario contraentrega de siempre. Al confirmar, el pedido le llega a tu <b>WhatsApp</b> ya escrito.</div></div>
+<div class="lp-ctrl"></div>
+<h3>Vista previa (así se ve en el celular)</h3>
+<iframe class="lp-frame" title="Vista previa de la landing" srcdoc="${esc(landingHTML(r))}"></iframe>
+<h3>Estructura, en orden</h3><ol class="steps"><li>Franja de confianza (pago contra entrega, envío gratis) y marca</li><li>Galería de ${A(L.galeria).length} fotos</li><li>Caja de compra: ${esc(S(L.titular).replace(/\*/g,""))}</li><li>Cinta de beneficios</li>${A(L.secciones).map(s=>`<li>${esc(tipos[s.tipo] || S(s.tipo))}: ${esc(S(s.titulo).replace(/\*/g,""))}</li>`).join("")}<li>Oferta: ${lpPacks(r).map(p=>`${esc(p.titulo)} ${money(p.precio)}`).join(" · ")}</li><li>Preguntas frecuentes (${A(L.faq).length})</li><li>Cierre: ${esc(S(L.cierre?.titulo))}</li></ol>
+<h3>Fotos de la landing</h3><p>Genéralas en Google Flow adjuntando la hoja de producto <b>P0</b>. Luego súbelas aquí, en el panel, con <b>Subir foto</b>. Hasta que las subas, la landing muestra un recuadro en su lugar.</p>
+${slots.map(f=>pb(`${S(f.id)} · ${S(f.donde)}`, `<span>Qué muestra:</span> ${esc(S(f.alt))}<span class="lp-up" data-slot="${esc(S(f.id))}"></span>`, lpPromptFoto(f, r))).join("")}`;
+}
+/* Lista de fotos que pide la landing (para generarlas en Flow y subirlas). */
+function lpSlots(r){
+  const L = r.landing || {}, out = [];
+  A(L.galeria).slice(0,6).forEach((f,j)=>out.push({...f, donde: j===0 ? "Galería · foto principal" : "Galería · foto " + (j+1)}));
+  A(L.secciones).forEach(s=>A(s.fotos).forEach(f=>out.push({...f, donde: S(s.eyebrow, s.tipo)})));
+  return out.filter(f=>S(f.id));
+}
+function lpPromptFoto(f, r){ const p = r.producto || {};
+  return `[STYLE LOCK]: Realistic e-commerce lifestyle photo for a product landing page, true to life color, crisp detail, natural light
+[SUBJECT]: ${fillProduct("{PRODUCTO}", p)}
+[ACTION]: ${S(f.prompt_en).replace(/\{PRODUCTO\}/g, S(p.nombre_corto_en,"the product"))}
+[MOOD]: warm, joyful and trustworthy; any adult person shows a genuine natural smile
+[ASPECT]: 1:1 square
+[REFERENCE]: P0 (keep the product identical)
+[PRODUCT]: ${S(p.lock_en)}
+[EXCLUDE]: ${EXCL_P}`; }
+
 function rmNumbers(r){
   const i = r.__input || {};
   const P = +r.__precio || 0, C = +i.costo || 0, E = +i.flete || 0, d = Math.min(Math.max((+i.devol||0)/100,0),.95);
