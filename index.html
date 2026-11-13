@@ -2045,6 +2045,21 @@ const RM_ENERGIA_SEG = `DIRECCIÓN DE EMOCIÓN (obligatoria, el cliente se quej�
 - En los campos _en describe la molestia con palabras suaves que pasan el filtro: "discomfort", "tired", "tense", "rubs her lower back", "frowns slightly". Nunca "pain", "sick", "suffering", "injury".
 - Sonido: música que arranca suave en el problema y sube a alegre y esperanzadora desde el producto. Voz cálida y cercana que se vuelve más animada y sonriente en el resultado.`;
 
+// Tácticas de tiendas ganadoras para atraer COMPRADORES y no curiosos (investigación 2026-11-12:
+// anuncios con más de 30 días activos en Dropkiller Colombia, guías de hooks 2026 y guías de clic a WhatsApp).
+const RM_COMPRADORES = `TÁCTICAS DE TIENDAS GANADORAS PARA ATRAER COMPRADORES (no curiosos):
+- Estructura del video ganador en 5 actos: 0-3 s gancho · 3-7 s contexto (a quién le pasa, dónde) · 8-20 s demostración real del producto funcionando · 20-25 s prueba social (gente que ya lo recibió) · cierre con oferta, pago al recibir y una acción clara ("escríbenos tu ciudad").
+- Usa estas 6 familias de gancho y reparte las variaciones y el banco de ganchos entre ellas:
+  1) RESULTADO o DEMOSTRACIÓN en el primer segundo (lo más visual del producto ya funcionando).
+  2) PROBLEMA COTIDIANO específico de ${"${pais}"} con una reacción humana real ("otra vez la reja oxidada", "se fue la luz y no veo nada").
+  3) PRUEBA SOCIAL estilo cliente real: unboxing en la puerta, "me llegó, lo pagué al recibir y mira", varias personas usándolo.
+  4) LLAMADO A QUIÉN ES: nombra al comprador ideal para que se sienta aludido ("Para los que tienen moto…", "Mamás que cocinan para 5…"). Así escribe el que lo necesita, no el curioso.
+  5) OBJECIÓN RESPONDIDA: "¿Y si no sirve? Lo pagas cuando lo tienes en la mano", "No necesitas electricista".
+  6) COMPARACIÓN DE VALOR: contra la alternativa cara ("lo que te cobra un pintor por una sola reja", "una mensualidad de gimnasio").
+- Estilo nativo tipo cliente real (grabado con celular, casas reales, gente hablando natural) rinde más que lo demasiado producido. Siempre subtítulos grandes: la mayoría lo ve sin sonido.
+- Especificidad: cifras y detalles concretos ("200 luces, 20 metros", "en 10 minutos") venden más que adjetivos ("increíble", "el mejor").
+- Para que escriban compradores y no curiosos: el texto del anuncio dice exactamente qué recibe la persona y el precio, y el cierre pide una acción concreta (ciudad o cantidad). Lo que da curiosidad sin compromiso trae preguntones; lo que da deseo + precio + pago al recibir trae pedidos.`;
+
 function rmMainPrompt(i){
   return `Eres estratega de dropshipping con pago contraentrega en ${i.pais} y director creativo de anuncios en video hechos con IA (imágenes y clips en Google Flow, voz en Fish Audio o ElevenLabs, montaje en CapCut).
 
