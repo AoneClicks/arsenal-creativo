@@ -2901,7 +2901,7 @@ function rmBody(r){
     let nF = 0, nRojo = 0, nAma = 0; const fallas = [];
     const badge = (txt, kind, donde) => { nF++; const L = rmLint(txt, kind); if(L.nivel==="rojo"){ nRojo++; fallas.push([donde, kind==="meta" ? "Guion (Meta)" : "Flow", L.w, "Rojo"]); } if(L.nivel==="amarillo"){ nAma++; fallas.push([donde, kind==="meta" ? "Guion (Meta)" : "Flow", L.w, "Amarillo"]); }
       return L.nivel==="ok" ? `<span class="okb">✓ Auditado</span>` : `<span class="${L.nivel==="rojo"?"badb":"midb"}">⚠ Revisar: “${esc(L.w)}”</span>`; };
-    const pbA = (title, adj, text, kind, donde) => { n++; return `<div class="pb"><div class="ph"><b>${esc(title)}</b>${badge(text, kind||"flow", donde||title)}<button class="cp" data-t="t${n}">Copiar</button></div>${adj ? `<div class="att">${adj}</div>` : ""}<pre id="t${n}">${esc(text)}</pre></div>`; };
+    const pbA = (title, adj, text, kind, donde) => { n++; const tx = (kind||"flow")==="flow" ? flowSafe(text) : text; return `<div class="pb"><div class="ph"><b>${esc(title)}</b>${badge(tx, kind||"flow", donde||title)}<button class="cp" data-t="t${n}">Copiar</button></div>${adj ? `<div class="att">${adj}</div>` : ""}<pre id="t${n}">${esc(tx)}</pre></div>`; };
     const prodLines = `[PRODUCT]: ${S(P.lock_en)}\n[LABEL]: ${S(P.label_en, "keep the exact brand name and typography printed on the product")}`;
     const promptP0 = `[STYLE LOCK]: clean product reference sheet, realistic product photography
 [ACTION]: ${S(P.partes_en, "the product")} shown in seven angles: front, back, left side, right side, three quarter left, three quarter right, top
