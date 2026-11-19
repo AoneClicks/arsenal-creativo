@@ -2760,7 +2760,7 @@ function rmBody(r){
   const p = r.producto || {}, m = r.mercado || {}, g = r.ganador || {};
   const vs = A(r.variaciones), nums = rmNumbers(r);
   let n = 0;
-  const pb = (title, att, text) => { n++; return `<div class="pb"><div class="ph"><b>${esc(title)}</b><button class="cp" data-t="t${n}">Copiar</button></div>${att ? `<div class="att">${att}</div>` : ""}<pre id="t${n}">${esc(text)}</pre></div>`; };
+  const pb = (title, att, text) => { n++; return `<div class="pb"><div class="ph"><b>${esc(title)}</b><button class="cp" data-t="t${n}">Copiar</button></div>${att ? `<div class="att">${att}</div>` : ""}<pre id="t${n}">${esc(flowSafe(text))}</pre></div>`; };
   const table = (heads, rows) => `<div class="tw"><table><thead><tr>${heads.map(x=>`<th>${esc(x)}</th>`).join("")}</tr></thead><tbody>${rows.map(rw=>`<tr>${rw.map(c=>`<td>${esc(S(c))}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
   const att = (lbl, v) => `<span>${lbl}:</span> ${esc(v)}`;
   let lpTab = "";
