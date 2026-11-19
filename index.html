@@ -2055,7 +2055,8 @@ const FLOW_SAFE = [
   [/\b(cigarettes?|smoking|vape|vaping|beer|whiske?y|vodka|drunk)\b/gi, "drink"],
   [/\bwine\b(?!\s*(red|color|colored|tone))/gi, "juice"],
 ];
-function flowSafe(s){ let t = S(s); for(const [re, rep] of FLOW_SAFE) t = t.replace(re, rep); return t; }
+// Solo toca prompts de Flow (los que traen [ACTION], [SUBJECT]…); los textos en español de los anuncios quedan intactos.
+function flowSafe(s){ let t = S(s); if(!/\[(STYLE LOCK|ACTION|SUBJECT|ENVIRONMENT|CAMERA)\]/.test(t)) return t; for(const [re, rep] of FLOW_SAFE) t = t.replace(re, rep); return t.replace(/\badult adult\b/gi, "adult"); }
 const RM_FLOW_REGLAS = `REGLAS DE GOOGLE FLOW (obligatorias en todos los campos en inglés, para que Flow no rechace el prompt):
 - Nunca marcas ni nombres registrados (iPhone, Netflix, Disney, Nike…): "a modern smartphone", "a streaming app".
 - Nunca menores: nada de children, kids, baby, girl, boy, teen, grandkids. Todas las personas son ADULTAS y con edad explícita ("a 32 year old woman"); los hijos y nietos son "adult daughter in her late 20s". Las escenas familiares van solo con adultos.
