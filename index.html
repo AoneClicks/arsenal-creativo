@@ -1716,6 +1716,26 @@ function radarCardHTML(x, isNew){
     <div class="acts"><button type="button" class="pri" data-ract="ver">Ver análisis</button><button type="button" data-ract="ruta">Crear hoja de ruta</button><button type="button" data-ract="calc">Costeo</button><button type="button" data-ract="del">Descartar</button></div>
   </article>`;
 }
+/* Botón "Buscar productos ahora" (pedido de Andrés, 2026-11-19): deja un pedido en la base de datos
+   (radar_pedidos/actual). Claude lo revisa cada 20 minutos (tarea "radar-a-pedido"), hace la búsqueda completa
+   con las reglas de tools/radar-diario.md, agrega los productos al Radar y le avisa. */
+let radarPedidoUnsub = null;
+function radarAhoraInit(){
+  const btn = $("#radarAhoraBtn"), st = $("#radarAhoraSt"); if(!btn) return;
+  if(!cloud){ btn.disabled = true; st.textContent = "La búsqueda a pedido funciona desde el panel de Claude. Aquí ves los productos que ya encontró."; return; }
+  const paint = d => {
+    if(!d){ btn.disabled = false; return; }
+    if(d.estado==="pendiente"){ btn.disabled = true; btn.textContent = "⏳ Pedido enviado"; st.textContent = `Pedido a las ${new Date(d.at).toLocaleTimeString("es-CO",{hour:"numeric",minute:"2-digit"})}. Claude empieza a buscar en máximo 20 minutos (el PC y la app de Claude deben estar abiertos).`; }
+    else if(d.estado==="buscando"){ btn.disabled = true; btn.textContent = "🔎 Buscando…"; st.textContent = "Claude está revisando Dropkiller, los precios de la competencia y tu costeo. Te avisa cuando termine."; }
+    else { btn.disabled = false; btn.textContent = "🔎 Buscar productos ahora"; st.textContent = d.resumen ? `Última búsqueda (${fmtDate(d.fin || d.at)}): ${S(d.resumen)}` : "Busca con tus reglas: de 350 a 550 ventas en 7 días, máximo 900 en total, tu costeo y nadie más barato."; }
+  };
+  try{ const ref = db.doc("radar_pedidos/actual"); if(typeof ref.onSnapshot === "function" && !radarPedidoUnsub) radarPedidoUnsub = ref.onSnapshot(s=>paint(s.exists ? s.data() : null), ()=>{}); else ref.get().then(s=>paint(s.exists ? s.data() : null)).catch(()=>{}); }catch{}
+  btn.addEventListener("click", async ()=>{
+    btn.disabled = true; btn.textContent = "Enviando…";
+    try{ await db.doc("radar_pedidos/actual").set({estado:"pendiente", at:Date.now(), por:PNAME}); toast("Listo: Claude va a buscar productos con tus reglas y te avisa."); }
+    catch(e){ btn.disabled = false; btn.textContent = "🔎 Buscar productos ahora"; st.textContent = "No se pudo enviar el pedido: " + aiErr(e); }
+  });
+}
 function renderRadar(){
   const L = radarList(), seen = radarSeen();
   $("#radarCount").textContent = L.length + (L.length===1 ? " producto" : " productos");
