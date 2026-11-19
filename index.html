@@ -879,7 +879,7 @@ function deleteResult(id){
 }
 async function initDb(){
   try{ db = scopeDb(IS_LOCAL ? makeLocalDb() : await window.claude?.use?.("db")); }catch{ db = null; }
-  if(!db){ setPill("pillSync","warn","Datos: solo en este navegador"); return; }
+  if(!db){ setPill("pillSync","warn","Datos: solo en este navegador"); radarAhoraInit(); return; }
   const slow = setTimeout(()=>setPill("pillSync","warn","Datos: la nube tarda en responder"), 10000);
   try{
     const [t, c, s] = await Promise.all([db.doc("app/tasks").get(), db.doc("app/chat").get(), db.collection("saved").orderBy("at","desc").limit(100).get()]);
@@ -891,9 +891,9 @@ async function initDb(){
     store.set(LOCAL.tasks, data.tasks); store.set(LOCAL.chat, data.chat); store.set(LOCAL.saved, data.saved);
     setPill("pillSync","ok", IS_LOCAL ? "Datos: guardados en tu PC" : "Datos: guardados en la nube");
     renderTasks(); renderSaved(); if(!chatBusy) renderChat();
-    rmLoadCloud(); radarLoadCloud();
+    rmLoadCloud(); radarLoadCloud(); radarAhoraInit();
   }catch{
-    clearTimeout(slow); setPill("pillSync","warn","Datos: solo en este navegador");
+    clearTimeout(slow); setPill("pillSync","warn","Datos: solo en este navegador"); radarAhoraInit();
   }
 }
 
@@ -1725,7 +1725,7 @@ function radarAhoraInit(){
   if(!cloud){ btn.disabled = true; st.textContent = "La búsqueda a pedido funciona desde el panel de Claude. Aquí ves los productos que ya encontró."; return; }
   const paint = d => {
     if(!d){ btn.disabled = false; return; }
-    if(d.estado==="pendiente"){ btn.disabled = true; btn.textContent = "⏳ Pedido enviado"; st.textContent = `Pedido a las ${new Date(d.at).toLocaleTimeString("es-CO",{hour:"numeric",minute:"2-digit"})}. Claude empieza a buscar en máximo 20 minutos (el PC y la app de Claude deben estar abiertos).`; }
+    if(d.estado==="pendiente"){ btn.disabled = true; btn.textContent = "⏳ Pedido enviado"; st.textContent = `Pedido a las ${new Date(d.at).toLocaleTimeString("es-CO",{hour:"numeric",minute:"2-digit"})}. Claude lo atiende en su próxima revisión. Si lo quieres ya, escríbele en el chat: "busca productos ya".`; }
     else if(d.estado==="buscando"){ btn.disabled = true; btn.textContent = "🔎 Buscando…"; st.textContent = "Claude está revisando Dropkiller, los precios de la competencia y tu costeo. Te avisa cuando termine."; }
     else { btn.disabled = false; btn.textContent = "🔎 Buscar productos ahora"; st.textContent = d.resumen ? `Última búsqueda (${fmtDate(d.fin || d.at)}): ${S(d.resumen)}` : "Busca con tus reglas: de 350 a 550 ventas en 7 días, máximo 900 en total, tu costeo y nadie más barato."; }
   };
