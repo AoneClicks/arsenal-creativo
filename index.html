@@ -2260,6 +2260,7 @@ PRODUCTO: ${i.nombre}. Verdad del producto: ${i.hace}. Regla: ${S(p.regla)}.
 Producto en inglés: ${S(p.subject_en)}. Se refiere como: ${S(p.nombre_corto_en,"the product")}.
 Precio de venta: ${money(r.__precio)}. Temporada: ${i.temporada || "ninguna"}. Pago contraentrega.
 Lo que funciona del ganador: ${S(r.ganador?.por_que)}. Lo que le falta: ${S(r.ganador?.le_falta)}.
+CÓMO LO PAUTA LA COMPETENCIA: formato ${S(r.competencia?.formato_dominante)}; estilo ${S(r.competencia?.estilo_video)}; el gancho que más vende es ${S(r.competencia?.gancho_que_mas_vende)}. Usa el MISMO formato que está funcionando (si es persona real a cámara, haz persona real; si son manos en primer plano, haz manos), pero hazlo mejor: ${A(r.competencia?.como_superarlos).join(" | ")}. En F1 deja espacio para el gancho escrito grande sobre la imagen, como hacen los ganadores.
 
 VARIACIÓN ${v.id} · ${S(v.nombre)} · ${S(v.nivel)}
 Concepto: ${S(v.concepto)}
@@ -2502,6 +2503,9 @@ Responde SOLO con un objeto JSON con esta forma exacta (todo en español):
  "reglas": [{"si":"condición medible con cifras","entonces":"acción"}],
  "errores": ["error común que hace perder ventas y cómo evitarlo"]
 }
+LO QUE HACE LA COMPETENCIA CON ESTE PRODUCTO: ${JSON.stringify(r.competencia || {}).slice(0,2500)}
+Tus títulos, descripciones y textos siguen la estructura que está vendiendo (gancho de 1 línea → 3 a 6 beneficios con ✅ → oferta → "🚚 Envío GRATIS · 💵 Pagas al recibir" → 👇), con los emojis que usan, pero con un gancho y una oferta MEJORES.
+DATO REAL (2026-11-19): en Colombia, los anunciantes que más venden mandan al botón "Comprar", hacia una página con formulario contraentrega; casi nadie usa clic a WhatsApp. El formulario filtra a los curiosos, porque solo lo llena quien va a comprar. En "recomendacion.alternativa" explica que Andrés ya tiene su landing con formulario (pestaña 🛒 Landing, que manda el pedido a su WhatsApp de ChateaPro). Para atraer compradores y no preguntones, recomiéndale probar una campaña de Ventas → Sitio web hacia esa landing, con botón "Comprar", al lado de la de WhatsApp.
 PARA QUE ESCRIBAN COMPRADORES Y NO CURIOSOS (tácticas de tiendas ganadoras):
 - Cada texto principal arranca con un gancho de una de estas familias: resultado, problema cotidiano, prueba social ("+500 hogares ya lo tienen" solo si es verdad; si no, "clientes en toda Colombia"), llamado a quién es, objeción respondida o comparación de valor. Cada copy usa una familia distinta.
 - El precio y lo que recibe exactamente van en las primeras 3 líneas del texto principal y en la bienvenida. El cierre pide una acción concreta: "Escríbenos tu ciudad y te confirmamos el envío".
@@ -2866,9 +2870,21 @@ function rmBody(r){
   const pb = (title, att, text) => { n++; return `<div class="pb"><div class="ph"><b>${esc(title)}</b><button class="cp" data-t="t${n}">Copiar</button></div>${att ? `<div class="att">${att}</div>` : ""}<pre id="t${n}">${esc(flowSafe(text))}</pre></div>`; };
   const table = (heads, rows) => `<div class="tw"><table><thead><tr>${heads.map(x=>`<th>${esc(x)}</th>`).join("")}</tr></thead><tbody>${rows.map(rw=>`<tr>${rw.map(c=>`<td>${esc(S(c))}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
   const att = (lbl, v) => `<span>${lbl}:</span> ${esc(v)}`;
+  // Pestaña "🕵️ Competencia": cómo pautan este producto los que más venden y cómo superarlos.
+  let compTab = "";
+  if(r.competencia && typeof r.competencia === "object"){ const c = r.competencia, li = xs => A(xs).length ? `<ol class="steps">${A(xs).map(x=>`<li>${esc(S(x))}</li>`).join("")}</ol>` : "";
+    compTab = `<h2>🕵️ Cómo lo pautan los que más venden</h2><div class="card hero"><div class="big" style="font-size:1.6rem">🕵️</div><div>Categoría <b>${esc(S(c.categoria))}</b>. Lo de abajo es lo que está funcionando en los anuncios de la competencia. Tus variaciones usan el mismo formato, pero con mejor gancho, mejor prueba y mejor oferta.</div></div>`
+    + `<h3>Formato del video que gana</h3><div class="card"><b>${esc(S(c.formato_dominante))}</b>${c.estilo_video ? "<br>" + esc(S(c.estilo_video)) : ""}</div>`
+    + `<h3>🔥 El gancho que más vende</h3><div class="card"><b>${esc(S(c.gancho_que_mas_vende))}</b></div>` + (A(c.ganchos_que_usan).length ? `<h3>Otros ganchos que usan</h3>${li(c.ganchos_que_usan)}` : "")
+    + (A(c.titulos_que_usan).length ? `<h3>Títulos que ponen</h3>` + A(c.titulos_que_usan).map((t,k)=>pb("Título " + (k+1), "", S(t))).join("") : "")
+    + (A(c.descripciones_que_usan).length ? `<h3>Textos y descripciones que pegan</h3>` + A(c.descripciones_que_usan).map((t,k)=>pb("Texto de la competencia " + (k+1), "", S(t))).join("") : "")
+    + `<h3>Emojis, oferta y botón</h3><div class="card"><b>Emojis:</b> ${esc(S(c.emojis))}<br><b>Oferta típica:</b> ${esc(S(c.oferta_tipica))}<br><b>Botón y destino:</b> ${esc(S(c.cta_y_destino))}</div>`
+    + (A(c.como_filtran_preguntones).length ? `<h3>🚫 Cómo se quitan a los preguntones</h3>${li(c.como_filtran_preguntones)}` : "")
+    + (A(c.como_superarlos).length ? `<h3>🏆 Cómo vas a ser mejor que ellos</h3>${li(c.como_superarlos)}` : "")
+    + (A(c.fuentes).length ? `<h3>Fuentes</h3><ol class="steps">${A(c.fuentes).map(u=>`<li>${linkify(S(u))}</li>`).join("")}</ol>` : ""); }
   let lpTab = "";
   if(r.__input && !r.__radar){ try{ lpTab = lpTabHTML(r, pb); }catch(e){ lpTab = `<h2>🛒 Landing de ventas</h2><div class="warn">No se pudo mostrar la landing: ${esc(S(e?.message||e))}. El resto de la hoja de ruta funciona normal.</div>`; } }
-  const tabs = [["inicio","Inicio"], ...(r.meta ? [["meta","📣 Cómo pautar en Meta"]] : []), ...(A(r.imagenes_ad).length ? [["imagenes","🖼️ Anuncios de imagen"]] : []), ...(lpTab ? [["landing","🛒 Landing"]] : []), ["mercado","Mercado y números"], ...vs.map((v,k)=>["v"+(k+1), `${S(v.id,"V"+(k+1))} · ${S(v.nombre)}`]), ["ganchos","Ganchos"]];
+  const tabs = [["inicio","Inicio"], ...(r.meta ? [["meta","📣 Cómo pautar en Meta"]] : []), ...(A(r.imagenes_ad).length ? [["imagenes","🖼️ Anuncios de imagen"]] : []), ...(compTab ? [["competencia","🕵️ Competencia"]] : []), ...(lpTab ? [["landing","🛒 Landing"]] : []), ["mercado","Mercado y números"], ...vs.map((v,k)=>["v"+(k+1), `${S(v.id,"V"+(k+1))} · ${S(v.nombre)}`]), ["ganchos","Ganchos"]];
 
   let inicio = "";
   if(r.meta){ const rc = r.meta.recomendacion || {}; inicio += `<div class="card hero"><div class="big" style="font-size:1.6rem">📣</div><div><b>Cómo pautarlo en Meta:</b> objetivo <b>${esc(S(rc.objetivo))}</b>${rc.ubicacion ? ` · ${esc(S(rc.ubicacion))}` : ""}${rc.rendimiento ? ` · ${esc(S(rc.rendimiento))}` : ""}.<br>Todo campo por campo, con títulos y descripciones listos para copiar, en la pestaña <b>📣 Cómo pautar en Meta</b> de arriba.</div></div>`; }
@@ -3091,8 +3107,8 @@ ${prodLines}
     if(A(au.referencias).length) aud += `<h3>Referencias a revisar antes de adjuntar</h3><ol class="steps">${A(au.referencias).map(x=>`<li>${esc(S(x))}</li>`).join("")}</ol>`;
 
     const gan = A(r.ganchos).length ? `<h2>Banco de ganchos</h2><p>Cada uno reemplaza los primeros 3 segundos de una variación, con lenguaje seguro.</p>` + table(["#","Qué se ve","Qué se dice","Nivel","Va con"], A(r.ganchos).map((x,k)=>["G"+(k+1), x.ve, x.dice, x.nivel, x.va_con])) : "";
-    const tb = [["intro","Diálogo y ruta"], ...(r.meta ? [["meta","📣 Cómo pautar en Meta"]] : []), ...(A(r.imagenes_ad).length ? [["imagenes","🖼️ Anuncios de imagen"]] : []), ...(lpTab ? [["landing","🛒 Landing"]] : []), ["mercado","Mercado y números"], ...V.map((v,k)=>["v"+(k+1), `${S(v.id,"V"+(k+1))} · ${S(v.corto, v.nombre)}`]), ["audit","Auditoría"], ...(gan ? [["ganchos","Ganchos"]] : [])];
-    const sc = [["intro",intro], ...(r.meta ? [["meta",meta]] : []), ...(A(r.imagenes_ad).length ? [["imagenes",imgs]] : []), ...(lpTab ? [["landing",lpTab]] : []), ["mercado",merc], ...vTabs.map((x,k)=>["v"+(k+1), x]), ["audit",aud], ...(gan ? [["ganchos",gan]] : [])];
+    const tb = [["intro","Diálogo y ruta"], ...(r.meta ? [["meta","📣 Cómo pautar en Meta"]] : []), ...(A(r.imagenes_ad).length ? [["imagenes","🖼️ Anuncios de imagen"]] : []), ...(compTab ? [["competencia","🕵️ Competencia"]] : []), ...(lpTab ? [["landing","🛒 Landing"]] : []), ["mercado","Mercado y números"], ...V.map((v,k)=>["v"+(k+1), `${S(v.id,"V"+(k+1))} · ${S(v.corto, v.nombre)}`]), ["audit","Auditoría"], ...(gan ? [["ganchos","Ganchos"]] : [])];
+    const sc = [["intro",intro], ...(r.meta ? [["meta",meta]] : []), ...(A(r.imagenes_ad).length ? [["imagenes",imgs]] : []), ...(compTab ? [["competencia",compTab]] : []), ...(lpTab ? [["landing",lpTab]] : []), ["mercado",merc], ...vTabs.map((x,k)=>["v"+(k+1), x]), ["audit",aud], ...(gan ? [["ganchos",gan]] : [])];
     return `<div class="rm td"><header><h1>${esc(S(r.titulo, r.__input?.nombre || "Hoja de ruta"))}</h1><p>${esc(S(r.subtitulo))}</p>
 <nav class="tabs">${tb.map(([k,l],j)=>`<button data-k="${k}" class="${j===0?"on":""}">${esc(l)}</button>`).join("")}</nav></header>
 <main>${sc.map(([k,x],j)=>`<section class="tab${j===0?" on":""}" id="${k}">${x}</section>`).join("")}</main></div>`;
@@ -3125,7 +3141,7 @@ ${prodLines}
 <nav class="tabs">${tb.map(([k,l],j)=>`<button data-k="${k}" class="${j===0?"on":""}">${esc(l)}</button>`).join("")}</nav></header>
 <main>${sc.map(([k,x],j)=>`<section class="tab${j===0?" on":""}" id="${k}">${x}</section>`).join("")}</main></div>`;
   }
-  const sections = [["inicio",inicio], ...(r.meta ? [["meta",meta]] : []), ...(A(r.imagenes_ad).length ? [["imagenes",imgs]] : []), ...(lpTab ? [["landing",lpTab]] : []), ["mercado",merc], ...varTabs.map((s,k)=>["v"+(k+1), s]), ["ganchos",ganchos]];
+  const sections = [["inicio",inicio], ...(r.meta ? [["meta",meta]] : []), ...(A(r.imagenes_ad).length ? [["imagenes",imgs]] : []), ...(compTab ? [["competencia",compTab]] : []), ...(lpTab ? [["landing",lpTab]] : []), ["mercado",merc], ...varTabs.map((s,k)=>["v"+(k+1), s]), ["ganchos",ganchos]];
   return `<div class="rm"><header><h1>${esc(S(r.titulo, r.__input?.nombre || "Hoja de ruta"))}</h1><p>${esc(S(r.subtitulo))}</p>
 <nav class="tabs">${tabs.map(([k,l],j)=>`<button data-k="${k}" class="${j===0?"on":""}">${esc(l)}</button>`).join("")}</nav></header>
 <main>${sections.map(([k,s],j)=>`<section class="tab${j===0?" on":""}" id="${k}">${s}</section>`).join("")}</main></div>`;
