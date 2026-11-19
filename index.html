@@ -2129,6 +2129,66 @@ const RM_COMPRADORES = `TÁCTICAS DE TIENDAS GANADORAS PARA ATRAER COMPRADORES (
 - Especificidad: cifras y detalles concretos ("200 luces, 20 metros", "en 10 minutos") venden más que adjetivos ("increíble", "el mejor").
 - Para que escriban compradores y no curiosos: el texto del anuncio dice exactamente qué recibe la persona y el precio, y el cierre pide una acción concreta (ciudad o cantidad). Lo que da curiosidad sin compromiso trae preguntones; lo que da deseo + precio + pago al recibir trae pedidos.`;
 
+/* Guía de anuncios ganadores por categoría (investigación del 2026-11-19 sobre 3.450 anuncios de los 600 productos
+   que más venden en Colombia en Dropkiller; 1.398 anuncios de Colombia). Datos medidos: en todas las categorías los
+   ganadores usan el botón "Comprar" hacia una página con formulario contraentrega (casi 0 % clic a WhatsApp); 53-86 %
+   son video; 20-29 % ponen el precio en el texto; 50-87 % dicen "pago contra entrega"; 44-69 % "envío gratis".
+   Formato que más dura: persona real hablando a cámara estilo cliente, o manos mostrando el producto de cerca, con el
+   gancho escrito grande sobre la imagen. Casi nadie usa 3D (ni en salud: usan testimonio de persona real). */
+const RM_CATEGORIAS = `GUÍA DE ANUNCIOS GANADORES POR CATEGORÍA (datos reales de Colombia, noviembre de 2026):
+- Lo común en todas las categorías:
+  - El texto empieza con un gancho de 1 línea: una pregunta de dolor ("¿Cansada de…?") o una promesa visual.
+  - Luego 3 a 6 beneficios con ✅ o ✔️ y el cierre "🚚 Envío GRATIS · 💵 Pagas al recibir", con una flecha 👇 o 👉.
+  - Título corto con el beneficio o la oferta ("Envío GRATIS y PAGO CONTRAENTREGA", "PAGA EN CASA").
+  - Botón "Comprar" hacia una página con formulario.
+  - Emojis que más usan: ✅ ✔️ 🔥 🚚 💵 ✨ 👇 👉 🎁 ⭐.
+- JOYERÍA Y ACCESORIOS:
+  - Formato: video o foto de la pieza en el cuello o la mano, en macro con brillo, y la caja de regalo.
+  - Ángulos: significado emocional (madre e hijo, "abrazo eterno"), fe o protección (hilo rojo, "Dios tiene el control", jade), suerte (trébol) o regalo.
+  - Gancho: "El regalo que…", "Para esa persona que…".
+  - Oferta: 2x1 o pack de 2 ("uno para ti y otro para regalar"), garantía larga ("5 años de garantía", oro laminado 18k) y caja de regalo incluida.
+  - Emojis: 💎 ✨ 💫 🙏 🍀 💝 🎁.
+- BELLEZA Y CUIDADO PERSONAL:
+  - Formato: mujer real hablando a cámara (UGC), textura del producto en la piel y antes y después suave.
+  - Gancho: pregunta de dolor ("¿Pelo maltratado y con frizz?", "Secreto de modelo para…") e ingredientes que dan confianza (colágeno, ácido hialurónico, karité).
+  - Oferta: dúo o kit con precio antes y ahora.
+  - Emojis: ✨ 🌿 💧 💜 🌷.
+- ASEO Y LIMPIEZA:
+  - Formato: el antes y después que da gusto ver (sarro, pisos opacos, manchas), con primeros planos satisfactorios.
+  - Gancho: "😬 No más…", "TUS PISOS HABLAN POR TI…".
+  - Oferta: regalo extra ("Galón gratis 🎁").
+  - Emojis: ✅ ✨ 🧽 🔥.
+- HOGAR Y DECORACIÓN:
+  - Formato: transformación del espacio (antes feo y después lindo) o persona explicando el ahorro.
+  - Oferta: volumen ("PAGA 4.5 LLEVA 9 MTS", 3x1) y "POCAS UNIDADES".
+  - Emojis: ⭐ 🔥 🎁 📦 🏠.
+- COCINA:
+  - Formato: manos usando el producto en cámara cenital, rápido y satisfactorio.
+  - Oferta: combo por precio fijo ("3 por $99.900").
+  - Es la categoría que más repite "pago contra entrega" (87 %).
+- HERRAMIENTAS Y AUTOMOTRIZ:
+  - Formato: demostración de potencia en uso real (corta, limpia, infla), en primera persona instalándolo y unboxing del kit completo.
+  - Gancho: "Lo instalé en mi carro y…" o "Llévate HOY el kit completo".
+  - Oferta: qué incluye exactamente ("DOS baterías, no una"), estilo testimonio.
+  - Emojis: 🔧 ⚡ 🧰 🚗 🔥.
+- SALUD Y BIENESTAR:
+  - Formato: persona real de la edad del público contando su experiencia, más la explicación del producto. Testimonio con lenguaje seguro.
+  - Gancho: "Nadie habla del… hasta que…".
+  - Casi nunca ponen el precio (1 %).
+  - Emojis: 🌿 🍯 🐝 ✅.
+- MASCOTAS:
+  - Formato: la mascota usando el producto (gracioso o tierno), o el dueño frustrado al inicio ("¿Tu mascota suelta pelo?").
+  - Emojis: 🐾 🐶 🐱.
+- TECNOLOGÍA:
+  - Formato: la promesa de ahorro ("Despídete de la factura…") y comparación con lo que paga hoy.
+  - Prueba social con cifra ("Más de 2.400 ya dejaron de pagar cable") y testimonio entre comillas en el título.
+- NIÑOS Y JUGUETES:
+  - Formato: el adulto viendo al niño disfrutar (en los prompts, solo adultos y el producto), con beneficio educativo o de seguridad.
+  - Prueba social con cifra ("+7.958 clientes satisfechos ✅").
+- DEPORTES:
+  - Formato: persona entrenando en casa y el resultado.
+  - Prueba social y regalo extra en el título ("GRATIS").`;
+
 function rmMainPrompt(i){
   return `Eres estratega de dropshipping con pago contraentrega en ${i.pais} y director creativo de anuncios en video hechos con IA (imágenes y clips en Google Flow, voz en Fish Audio o ElevenLabs, montaje en CapCut).
 
