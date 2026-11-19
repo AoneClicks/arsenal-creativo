@@ -2077,13 +2077,17 @@ const RM_ENERGIA = `DIRECCIÓN DE EMOCIÓN Y ENERGÍA (obligatoria, el cliente s
 - Si hay un problema al inicio, se muestra con una reacción humana creíble (fastidio, cara de "otra vez no", risa nerviosa), y desde el momento del producto la energía sube: alivio, sonrisa y satisfacción.
 - LOS PRIMEROS 3 SEGUNDOS conectan emocionalmente: una cara con emoción real (sorpresa, risa, asombro, alivio) o un resultado visual que da gusto ver, más una frase que suena a conversación. Nada de arranques lentos, fondos vacíos ni producto quieto.
 - Sonido: música alegre y con ritmo acorde al producto (navideña alegre, pop latino suave, acústica animada), nunca melancólica ni lenta. Voz en off cálida y sonriente (que se note la sonrisa al hablar), ritmo dinámico, entonación que sube en el gancho y en el cierre. Efectos que celebran el resultado (clic, brillo, risas de familia, "wow").
-- Escenas luminosas y con color: luz cálida de día o noches festivas bien iluminadas, casas colombianas reales con vida (gente, plantas, detalles), nunca escenas grises o vacías.`;
+- Escenas luminosas y con color: luz cálida de día o noches festivas bien iluminadas, casas colombianas reales con vida (gente, plantas, detalles), nunca escenas grises o vacías.
+
+${RM_FLOW_REGLAS}`;
 const RM_ENERGIA_SEG = `DIRECCIÓN DE EMOCIÓN (obligatoria, el cliente se quejó de que los avatares se veían tristes):
 - Arco emocional en 3 tiempos: 1) PROBLEMA: el avatar se ve con la molestia de forma creíble (cansado, incómodo, se toca la zona con la mano, se detiene, cara de fastidio), sin exagerar el sufrimiento ni mostrar el cuerpo por dentro; 2) DESCUBRIMIENTO: curiosidad y esperanza cuando conoce el producto; 3) RESULTADO: alivio, sonrisa genuina, se mueve con energía, vuelve a hacer lo que le gusta (bailar, jugar con los nietos, caminar, cocinar) y lo recomienda a cámara con confianza, como a un amigo.
 - Desde la frase del producto hasta el cierre, el avatar está contento, animado y transmite confianza. El cierre siempre es feliz y recomendando.
 - Los primeros 3 segundos conectan: una situación cotidiana que el público reconoce al instante (se levanta de la silla y se toca la espalda, no puede abrir un frasco, se despierta cansado) con una expresión humana real.
 - En los campos _en describe la molestia con palabras suaves que pasan el filtro: "discomfort", "tired", "tense", "rubs her lower back", "frowns slightly". Nunca "pain", "sick", "suffering", "injury".
-- Sonido: música que arranca suave en el problema y sube a alegre y esperanzadora desde el producto. Voz cálida y cercana que se vuelve más animada y sonriente en el resultado.`;
+- Sonido: música que arranca suave en el problema y sube a alegre y esperanzadora desde el producto. Voz cálida y cercana que se vuelve más animada y sonriente en el resultado.
+
+${RM_FLOW_REGLAS}`;
 
 // Tácticas de tiendas ganadoras para atraer COMPRADORES y no curiosos (investigación 2026-11-12:
 // anuncios de productos que venden en Dropkiller Colombia (nuevos o de larga duración), guías de hooks 2026 y guías de clic a WhatsApp).
@@ -2353,6 +2357,7 @@ Lo que funciona del ganador: ${S(r.ganador?.por_que)}. Ganchos de los videos: ${
 ${seguro ? "PRODUCTO NATURAL O DE SALUD: nada de antes y después del cuerpo, nada de médicos o batas, nada de promesas de cura en los textos (usa 'ayuda a', 'apoya', 'rutina de cuidado'). El problema se muestra con la situación y una expresión creíble de molestia (cansancio, se toca la espalda, fastidio), nunca con el cuerpo por dentro ni exagerando el sufrimiento; el resultado, con la persona contenta, animada y recomendando con confianza." : "EMOCIÓN: las personas se ven alegres, con energía y confiables (sonrisa genuina, gestos vivos, mostrando el producto como a un amigo), acordes al producto: familia feliz instalando o disfrutando, resultado agradable que da gusto ver. Nunca caras serias o apagadas."}
 Los 4 modelos son fijos, en este orden:
 ${IMG_MODELOS.map(m=>`${m.id} · ${m.modelo}: ${m.idea}`).join("\n")}
+${RM_FLOW_REGLAS}
 La imagen se genera en Google Flow SIN TEXTO; el texto se pone después en Canva o CapCut, dentro de la zona segura, por eso deja espacio limpio donde va el titular.
 Responde SOLO con JSON:
 {"modelos":[{"id":"M1","modelo":"El resultado que detiene el scroll","por_que":"por qué este formato vende este producto","estilo_en":"photo style lock in English (e.g. high-end commercial advertising photo, cinematic, true to life color)","persona_en":"si sale una persona, descripción física en inglés (adulto, ropa lisa); vacío si no sale","emocion_en":"si sale una persona, su emoción y expresión en inglés acorde al producto (e.g. joyful, genuine smile, proudly showing the result)","action_en":"what is seen, in English, with {PRODUCTO} where the exact product goes","environment_en":"Colombian setting in English","lighting_en":"","camera_en":"","espacio_en":"where to leave clean empty space for the headline (e.g. upper third)","titular":"MÁX 6 PALABRAS EN MAYÚSCULAS","subtitulo":"una línea corta","sello":"texto del sello o badge (ej. PAGAS AL RECIBIR)","cta":"botón dibujado (ej. PÍDELO POR WHATSAPP)","diseno":"cómo montarlo en Canva: posición de cada texto, tipografía, colores de la marca, íconos o flechas","titulo":"título del anuncio en Meta, máx 40 caracteres, enganchable","descripcion":"máx 30 caracteres","texto_principal":"texto principal corto con emojis moderados y oferta"}]}
@@ -2501,6 +2506,7 @@ LENGUAJE SEGURO OBLIGATORIO: nada de "cura", "elimina", "desaparece", "100 %", "
 4. Aviso legal corto de uso ("Uso decorativo en interiores", "Las fotos son de referencia").`}
 EMOCIÓN: los textos transmiten la misma energía de las hojas de ruta: alegre, cercana y confiable${seguro ? "; el problema se describe con empatía y el resultado con alivio y alegría" : "; el producto se ve como el protagonista de un momento feliz"}.
 FOTOS: cada foto lleva "prompt_en": un prompt en inglés para generarla en Google Flow con la foto real del producto como referencia (escena colombiana real, luz natural, personas adultas alegres si salen, nunca texto en la imagen), y "alt" en español. La galería principal lleva 5 fotos: 1) el producto protagonista en fondo limpio, 2) el producto funcionando, 3) una escena de uso con persona feliz, 4) una comparación sin vs con (dividida), 5) detalle de lo que trae.
+${RM_FLOW_REGLAS}
 Escoge el tema visual que mejor va con el producto: "calido" (navidad, regalos, hogar cálido), "noche" (luces, cosas que brillan), "fresco" (limpieza, higiene, tecnología), "lavanda" (descanso, calma, cuidado), "durazno" (belleza, cuidado natural, mujer).
 Inventa una MARCA corta y pegajosa en mayúsculas si el producto no trae una (como MEDULUZ, REVELA, TINNIDROP), sin usar marcas registradas de otros.
 
