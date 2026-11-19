@@ -2023,7 +2023,46 @@ const money = n => "$" + Math.round(+n||0).toLocaleString("es-CO");
 const S = (x, d="") => (x===undefined || x===null) ? d : String(x);
 const A = x => Array.isArray(x) ? x : [];
 
-const PERSON_LOCK = "Vertical video shot on an iPhone 17 Pro Max, crisp and clean, true to life color. Visible pores, fine wrinkles, uneven skin tone, handheld, imperfect framing";
+const PERSON_LOCK = "Vertical video shot on a modern smartphone, crisp and clean, true to life color. Natural skin texture, handheld, imperfect framing";
+/* ---------- Filtro de políticas de Google Flow (2026-11-19) ----------
+   Flow (Veo / Imagen) rechaza prompts por: marcas o propiedad intelectual, menores de edad (es el filtro más estricto
+   y da falsos positivos en escenas familiares), combinaciones que lee como sexuales (mujer + cama + pijama + abrazo),
+   violencia o crimen, y términos médicos. Fuentes: guía de IA responsable de Veo en Google Cloud y reportes de usuarios
+   en los foros de Google AI. Este filtro cambia SOLO esas palabras por equivalentes seguros; la creatividad no se toca. */
+const FLOW_SAFE = [
+  [/\b(an?\s+)?iphone(\s+\d+)?(\s+pro)?(\s+max)?\b/gi, "a modern smartphone"],
+  [/\b(samsung|gopro|netflix|youtube|instagram|tiktok|facebook|coca[- ]?cola|pepsi|disney|pixar|marvel|nike|adidas|apple|jbl|dewalt|makita|lego|barbie|pok[eé]mon|starbucks|mcdonald'?s)\b/gi, "a generic brand-free"],
+  [/\b(grandchildren|grandkids|grandsons?|granddaughters?)\b/gi, "adult grandchildren in their twenties"],
+  [/\b(little\s+)?(children|kids|toddlers?|infants?)\b/gi, "adult family members"],
+  [/\b(a\s+)?(little\s+)?(child|kid)\b(?!ney)/gi, "a young adult"],
+  [/\bbab(y|ies)\b(?!\s+(blue|pink|powder))/gi, "adult"],
+  [/\b(little\s+|young\s+)?(school)?girls?\b/gi, "young woman in her twenties"],
+  [/\b(little\s+|young\s+)?(school)?boys?\b/gi, "young man in his twenties"],
+  [/\b(teenagers?|teens?|minors?|underage|adolescents?)\b/gi, "young adults in their twenties"],
+  [/\b(?<!adult\s)(daughter|son)\b/gi, (m) => "adult " + m],
+  [/\b(pajamas|pyjamas|nightgown|nightwear|lingerie|underwear|bikini)\b/gi, "comfortable loungewear"],
+  [/\b(naked|nude|topless|shirtless|sexy|sensual|seductive|cleavage)\b/gi, "fully clothed"],
+  [/\b(sleeping|asleep)\b/gi, "resting with eyes closed"],
+  [/\bin bed\b/gi, "resting on the bed covers, fully clothed"],
+  [/\b(thie(f|ves)|robbers?|burglars?|intruders?|criminals?|delinquents?)\b/gi, "someone"],
+  [/\b(guns?|pistols?|rifles?|knives|knife|weapons?)\b/gi, "object"],
+  [/\b(blood(y)?|bleeding|wounds?|injur(y|ies|ed))\b/gi, "discomfort"],
+  [/\b(fight(ing)?|attack(s|ing|ed)?|kill(s|ing|ed)?|dead|corpse|violent)\b/gi, "dramatic"],
+  [/\b(pain(ful)?|aches?|aching|sick|illness|disease)\b/gi, "discomfort"],
+  [/\b(pills?|tablets?|capsules?|syringes?|needles?)\b/gi, "plain unlabeled container"],
+  [/\b(doctors?|nurses?|surgeons?|patients?)\b/gi, "person"],
+  [/\b(hospital|clinic|surgery|operating room)\b/gi, "bright modern room"],
+  [/\b(cigarettes?|smoking|vape|vaping|beer|whiske?y|vodka|drunk)\b/gi, "drink"],
+  [/\bwine\b(?!\s*(red|color|colored|tone))/gi, "juice"],
+];
+function flowSafe(s){ let t = S(s); for(const [re, rep] of FLOW_SAFE) t = t.replace(re, rep); return t; }
+const RM_FLOW_REGLAS = `REGLAS DE GOOGLE FLOW (obligatorias en todos los campos en inglés, para que Flow no rechace el prompt):
+- Nunca marcas ni nombres registrados (iPhone, Netflix, Disney, Nike…): "a modern smartphone", "a streaming app".
+- Nunca menores: nada de children, kids, baby, girl, boy, teen, grandkids. Todas las personas son ADULTAS y con edad explícita ("a 32 year old woman"); los hijos y nietos son "adult daughter in her late 20s". Las escenas familiares van solo con adultos.
+- Nada que pueda leerse como sexual: nada de pajamas, lingerie ni sleeping/in bed con una persona. Usa "comfortable loungewear" y "resting on the sofa".
+- Nada de violencia ni crimen (thief, intruder, weapon, blood, fight): "someone arrives at the gate".
+- Nada médico (pain, sick, pills, doctor, hospital): usa "discomfort", "tired" y "plain unlabeled container".
+- Nada de alcohol ni cigarrillo, y nunca nombres de personas reales o famosas.`;
 // Energía por defecto de las personas en los anuncios normales (se ve real, alegre y confiable).
 const MOOD_PERSONA = "genuinely happy and energetic, natural warm smile that reaches the eyes, lively expressive gestures, relaxed and trustworthy, like recommending it to a friend";
 const EXCL = "no text, no logos, no watermarks, no brand names, no extra hands, no distorted faces, no CGI look";
