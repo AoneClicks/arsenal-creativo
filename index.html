@@ -2734,7 +2734,7 @@ ${G.length ? `<div class="gal"><span class="gbadge">🚚 Envío gratis · 💵 P
 <p class="eta">📦 Pide hoy y te llega entre el <b id="eta1">2</b> y el <b id="eta2">5.º día hábil</b></p>
 ${packs[1] ? `<button type="button" class="combo" data-buy="1">🎁 Lleva ${esc(packs[1].titulo.toLowerCase())} por <b>${money(packs[1].precio)}</b> y ahorra ${money(packs[1].ahorro)} →</button>` : ""}
 <button type="button" class="cta" data-buy=""><b>${esc(cta)}</b><small>Envío gratis y pago contra entrega</small></button>
-<div class="mini"><span>Envío gratis</span><span>Pagas al recibir</span><span>Llega en 2 a 5 días</span></div></div>
+<div class="trust"><div><i>🚚</i><span><b>Envío gratis</b>a toda Colombia</span></div><div><i>💵</i><span><b>Pagas al recibir</b>en efectivo, en tu puerta</span></div><div><i>📦</i><span><b>Producto sellado</b>nuevo, en su empaque</span></div><div><i>💬</i><span><b>Te confirmamos</b>por WhatsApp</span></div></div></div>
 ${tick.length ? `<div class="tick"><div class="track">${[...tick, ...tick].map(t=>`<span>${esc(S(t.e))} ${esc(S(t.t))}</span>`).join("")}</div></div>` : ""}
 ${secciones}
 <section class="sec deep" id="oferta"><div class="wrap"><p class="eyebrow">${seguro ? "PÍDELO HOY" : "OFERTA DE TEMPORADA"}</p><h2>${lpEm(S(L.oferta_titulo, "Tu " + marca + " en la puerta de tu casa"))}</h2><p class="lead">Envío gratis y pagas en efectivo cuando te lo entreguen.</p><div class="offers">${offer}</div><button type="button" class="cta" data-buy=""><b>HACER MI PEDIDO</b><small>Pagas cuando te llegue</small></button></div></section>
