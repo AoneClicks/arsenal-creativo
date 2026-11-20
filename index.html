@@ -2300,7 +2300,7 @@ ${RM_ENERGIA}
 // 1) Se quitan frases que no son de salud ("energía solar", "luz natural"…). 2) Una palabra fuerte basta.
 // 3) Una forma de producto que se toma o se aplica (gotas, crema, aceite…) + una condición del cuerpo (dolor, piel…) también.
 const RM_NO_SALUD = /(energ[ií]a solar|panel(es)? solar(es)?|carga solar|luz natural|gas natural|(madera|cuero|piedra|fibra|tela|color|tono|aspecto|look|caucho|goma|seda|lino) natural(es)?|piel sint[eé]tica|cuero sint[eé]tico|visi[oó]n nocturna|alta definici[oó]n|f[oó]rmula 1)/gi;
-const RM_SALUD_FUERTE = /(suplement|c[aá]psulas|tabletas|comprimidos|gotas (para|de|naturales)|col[aá]geno|vitamina|magnesio|zinc|drenaje linf|linf[aá]tic|tinnitus|zumbido en (el|los) o[ií]do|artritis|artrosis|pr[oó]stat|diabet|glucosa|az[uú]car en la sangre|colesterol|triglic[eé]rid|hipertensi|presi[oó]n arterial|adelgaz|bajar de peso|perder peso|quema ?grasa|quemador|detox|desintoxic|hongos|onicomicosis|v[aá]rices|hemorroid|probi[oó]tic|prebi[oó]tic|shilajit|batana|ung[uü]ento|pomada|t[oó]nico capilar|elixir|remedio|medicinal|fitoterap|homeop|extracto (de|natural)|f[oó]rmula natural|100 ?% natural|ingredientes naturales|antiinflamatori|analg[eé]sic|ci[aá]tica|neuropat|insomnio|ansiedad|libido|disfunci[oó]n|potenciador|retardante|menopausia|h[ií]gado graso|estre[ñn]imiento|gastritis|reflujo|acn[eé]|melasma|ca[ií]da del cabello|crecimiento del cabello|cubre ?canas|caspa|psoriasis|dermatitis|antiarrugas|anti ?edad|s[eé]rum facial|nad\+|resveratrol|berberina|ashwagandha|moringa|c[uú]rcuma|ginseng|espirulina|guan[aá]bana|aceite de or[eé]gano|semilla negra|black seed|apio en polvo|t[eé] (adelgazante|detox|medicinal)|jarabe|infusi[oó]n (para|de hierbas)|parche (para el dolor|adelgazante|detox|kinoki)|kinoki|plantilla magn[eé]tica)/i;
+const RM_SALUD_FUERTE = /(suplement|c[aá]psulas|tabletas|comprimidos|gotas (para|de|naturales)|col[aá]geno|vitamina|magnesio|zinc|drenaje linf|linf[aá]tic|tinnitus|zumbido en (el|los) o[ií]do|artritis|artrosis|pr[oó]stat|diabet|glucosa|az[uú]car en la sangre|colesterol|triglic[eé]rid|hipertensi|presi[oó]n arterial|adelgaz|bajar de peso|perder peso|quema ?grasa|quemador|detox|desintoxic|hongos|onicomicosis|v[aá]rices|hemorroid|probi[oó]tic|prebi[oó]tic|shilajit|batana|ung[uü]ento|pomada|t[oó]nico capilar|elixir|remedio|medicinal|fitoterap|homeop|extracto (de|natural)|f[oó]rmula natural|100 ?% natural|ingredientes naturales|antiinflamatori|analg[eé]sic|ci[aá]tica|neuropat|insomnio|ansiedad|libido|disfunci[oó]n|potenciador|retardante|menopausia|h[ií]gado graso|estre[ñn]imiento|gastritis|reflujo|acn[eé]|melasma|ca[ií]da del cabello|crecimiento del cabello|cubre ?canas|caspa|psoriasis|dermatitis|antiarrugas|anti ?edad|s[eé]rum facial|nad\+|resveratrol|berberina|ashwagandha|moringa|c[uú]rcuma|ginseng|espirulina|guan[aá]bana|aceite de or[eé]gano|semilla negra|black seed|apio en polvo|\bt[eé] (adelgazante|detox|medicinal)|jarabe|infusi[oó]n (para|de hierbas)|parche (para el dolor|adelgazante|detox|kinoki)|kinoki|plantilla magn[eé]tica)/i;
 const RM_FORMA = /(?:^|[^a-záéíóúñ])(gotas|crema|aceite|b[aá]lsamo|gel|loci[oó]n|parche|spray|t[eé]|infusi[oó]n|polvo|jarabe|tintura|roll-?on|champ[uú]|shampoo|mascarilla|ung[uü]ento|unt[aá]ble|bebida|batido)(?=[^a-záéíóúñ]|$)/i;
 const RM_CONDICION = /\b(dolor|dolores|piel|cabello|o[ií]dos?|ojos|vista|sue[ñn]o|inflamaci[oó]n|articulaci[oó]n|articulaciones|rodillas?|espalda|cuello|m[uú]sculos?|nervios?|circulaci[oó]n|digesti[oó]n|est[oó]mago|colon|ri[ñn]ones?|pulmones|defensas|inmunidad|peso|grasa|celulitis|manchas|arrugas|estr[eé]s|cansancio|fatiga|memoria|concentraci[oó]n)\b/i;
 function rmTipoProducto(i){
@@ -2788,7 +2788,7 @@ function lpTabHTML(r, pb){
 <h3>Estructura, en orden</h3><ol class="steps"><li>Franja de confianza (pago contra entrega, envío gratis) y marca</li><li>Galería de ${A(L.galeria).length} fotos</li><li>Caja de compra: ${esc(S(L.titular).replace(/\*/g,""))}</li><li>Cinta de beneficios</li>${A(L.secciones).map(s=>`<li>${esc(tipos[s.tipo] || S(s.tipo))}: ${esc(S(s.titulo).replace(/\*/g,""))}</li>`).join("")}<li>Oferta: ${lpPacks(r).map(p=>`${esc(p.titulo)} ${money(p.precio)}`).join(" · ")}</li><li>Preguntas frecuentes (${A(L.faq).length})</li><li>Cierre: ${esc(S(L.cierre?.titulo))}</li></ol>
 <h3>Fotos de la landing</h3><p>Toca <b>🎨 Crear las fotos con IA</b> (arriba) y el panel crea y pone todas las fotos solo, con tu Gemini. Para que el producto salga idéntico, sube primero la <b>foto real del producto</b> (la del proveedor en Dropi). Si prefieres hacerlas en Google Flow, todos los prompts están en la pestaña <b>📸 Prompts img landing</b>; luego súbelas aquí con <b>Subir foto</b>.</p>
 <div class="card">📸 <b>Foto real del producto</b> (referencia para la IA) <span class="lp-up" data-slot="ref"></span></div>
-${slots.map(f=>pb(`${S(f.id)} · ${S(f.donde)}`, `<span>Qué muestra:</span> ${esc(S(f.alt))}<span class="lp-up" data-slot="${esc(S(f.id))}"></span>`, lpPromptFoto(f, r))).join("")}`;
+${slots.map(f=>pb(`${S(f.id)} · ${S(f.donde)} · Adjuntar ${lpRefs(f).adj}`, `<span>Adjuntar:</span> <b>${esc(lpRefs(f).txt)}</b> · <span>Qué muestra:</span> ${esc(S(f.alt))}<span class="lp-up" data-slot="${esc(S(f.id))}"></span>`, lpPromptFoto(f, r))).join("")}`;
 }
 /* Lista de fotos que pide la landing (para generarlas en Flow y subirlas). */
 function lpSlots(r){
@@ -2797,13 +2797,18 @@ function lpSlots(r){
   A(L.secciones).forEach(s=>A(s.fotos).forEach(f=>out.push({...f, donde: S(s.eyebrow, s.tipo)})));
   return out.filter(f=>S(f.id));
 }
+// Qué adjuntar en Flow para cada foto de la landing (pedido de Andrés, 2026-11-20): P0 = hoja de producto; A1 = la persona.
+const LP_PERSONA = /\b(woman|women|man|men|person|people|mother|mom|father|dad|girl|boy|lady|guy|couple|family|she|her|he|his|child|kid|kids|grandma|grandmother|grandfather|customer|model|adult|friend|friends|wife|husband|son|daughter|baby)\b|mujer|hombre|persona|gente|mam[aá]|madre|pap[aá]|padre|señora|señor|niñ|pareja|familia|abuel|cliente|modelo|amig|esposa|esposo|hij[oa]|beb[eé]/i;
+function lpRefs(f){ const per = LP_PERSONA.test(S(f?.prompt_en) + " " + S(f?.alt));
+  return {per, adj: per ? "A1 + P0" : "P0", txt: per ? "A1 + P0 (A1 = la persona de la V1; si quieres otra, la A1 de V2 o V3)" : "P0 (solo la hoja de producto; esta foto no lleva persona)",
+    ref_en: per ? "A1 for the person (same face, hair and age), P0 for the product (keep it identical)" : "P0 (keep the product identical)"}; }
 function lpPromptFoto(f, r){ const p = r.producto || {};
   return `[STYLE LOCK]: Realistic e-commerce lifestyle photo for a product landing page, true to life color, crisp detail, natural light
 [SUBJECT]: ${fillProduct("{PRODUCTO}", p)}
 [ACTION]: ${S(f.prompt_en).replace(/\{PRODUCTO\}/g, S(p.nombre_corto_en,"the product"))}
 [MOOD]: warm, joyful and trustworthy; any adult person shows a genuine natural smile
 [ASPECT]: 1:1 square
-[REFERENCE]: P0 (keep the product identical)
+[REFERENCE]: ${lpRefs(f).ref_en}
 [PRODUCT]: ${S(p.lock_en)}
 [EXCLUDE]: ${EXCL_P}`; }
 /* Fotos automáticas (pedido de Andrés, 2026-11-19): el panel crea cada foto de la landing con el modelo de imágenes
@@ -2969,10 +2974,11 @@ function rmBody(r){
   let lpImgTab = "";
   if(r.landing){ try{ const sl = lpSlots(r);
     if(sl.length) lpImgTab = `<h2>📸 Prompts para img de landing</h2><div class="card hero"><div class="big" style="font-size:1.6rem">📸</div><div>Estos prompts son <b>solo para las fotos de la landing</b> (no para los anuncios). Hazlas en <b>Google Flow</b>: adjunta la foto real del producto (o la hoja de producto <b>P0</b>), pega el prompt y genera en <b>cuadrado 1:1</b>. Cuando la tengas, toca <b>Subir foto</b> en esa misma tarjeta: la foto se pone sola en su puesto de la landing y la vista previa de abajo se actualiza.</div></div>
-<p>Son <b>${sl.length} fotos</b>, en el orden en que salen en la landing. Cada tarjeta dice <b>dónde va</b>.</p>
+<p>Son <b>${sl.length} fotos</b>, en el orden en que salen en la landing. Cada tarjeta dice <b>qué adjuntar en Flow</b> y <b>dónde va</b>.</p>
+<div class="card"><b>Qué adjuntar en Flow:</b><br>• <b>P0</b> = la hoja de producto (está en la pestaña de la V1, "P0 · Hoja de producto"). Va en TODAS las fotos para que el producto salga igual.<br>• <b>A1</b> = la persona (está en cada variación, "A1 · persona"). Va solo en las fotos donde sale alguien, junto con P0: <b>A1 + P0</b>.<br>Total aquí: ${sl.filter(f=>!lpRefs(f).per).length} fotos con <b>P0</b> y ${sl.filter(f=>lpRefs(f).per).length} con <b>A1 + P0</b>.</div>
 <details class="card"><summary><b>👀 Ver cómo va quedando la landing</b></summary><iframe class="lp-frame" title="Vista previa de la landing" srcdoc="${esc(landingHTML(r))}"></iframe></details>
 <p><button type="button" class="lp-dl lp-gen">⬇️ Descargar landing (HTML) con las fotos</button> Cuando tengas todas las fotos, descárgala aquí: el archivo ya lleva las fotos adentro y lo puedes publicar.</p>
-${sl.map((f,j)=>pb(`Foto ${j+1} · ${S(f.donde)}`, `<span>📍 Va en:</span> ${esc(S(f.donde))} · <span>Qué muestra:</span> ${esc(S(f.alt))}<span class="lp-up" data-slot="${esc(S(f.id))}"></span>`, lpPromptFoto(f, r))).join("")}`; }catch(e){ lpImgTab = ""; } }
+${sl.map((f,j)=>pb(`Foto ${j+1} · ${S(f.donde)} · Adjuntar ${lpRefs(f).adj}`, `<span>Adjuntar:</span> <b>${esc(lpRefs(f).txt)}</b> · <span>📍 Va en:</span> ${esc(S(f.donde))} · <span>Qué muestra:</span> ${esc(S(f.alt))}<span class="lp-up" data-slot="${esc(S(f.id))}"></span>`, lpPromptFoto(f, r))).join("")}`; }catch(e){ lpImgTab = ""; } }
   if(r.__input && !r.__radar){ try{ lpTab = lpTabHTML(r, pb); }catch(e){ lpTab = `<h2>🛒 Landing de ventas</h2><div class="warn">No se pudo mostrar la landing: ${esc(S(e?.message||e))}. El resto de la hoja de ruta funciona normal.</div>`; } }
   const tabs = [["inicio","Inicio"], ...(r.meta ? [["meta","📣 Cómo pautar en Meta"]] : []), ...(A(r.imagenes_ad).length ? [["imagenes","🖼️ Anuncios de imagen"]] : []), ...(compTab ? [["competencia","🕵️ Competencia"]] : []), ...(lpTab ? [["landing","🛒 Landing"]] : []), ...(lpImgTab ? [["lpimg","📸 Prompts img landing"]] : []), ["mercado","Mercado y números"], ...vs.map((v,k)=>["v"+(k+1), `${S(v.id,"V"+(k+1))} · ${S(v.nombre)}`]), ["ganchos","Ganchos"]];
 
