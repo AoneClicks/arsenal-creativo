@@ -2971,6 +2971,7 @@ function rmBody(r){
     if(sl.length) lpImgTab = `<h2>📸 Prompts para img de landing</h2><div class="card hero"><div class="big" style="font-size:1.6rem">📸</div><div>Estos prompts son <b>solo para las fotos de la landing</b> (no para los anuncios). Hazlas en <b>Google Flow</b>: adjunta la foto real del producto (o la hoja de producto <b>P0</b>), pega el prompt y genera en <b>cuadrado 1:1</b>. Cuando la tengas, toca <b>Subir foto</b> en esa misma tarjeta: la foto se pone sola en su puesto de la landing y la vista previa de abajo se actualiza.</div></div>
 <p>Son <b>${sl.length} fotos</b>, en el orden en que salen en la landing. Cada tarjeta dice <b>dónde va</b>.</p>
 <details class="card"><summary><b>👀 Ver cómo va quedando la landing</b></summary><iframe class="lp-frame" title="Vista previa de la landing" srcdoc="${esc(landingHTML(r))}"></iframe></details>
+<p><button type="button" class="lp-dl lp-gen">⬇️ Descargar landing (HTML) con las fotos</button> Cuando tengas todas las fotos, descárgala aquí: el archivo ya lleva las fotos adentro y lo puedes publicar.</p>
 ${sl.map((f,j)=>pb(`Foto ${j+1} · ${S(f.donde)}`, `<span>📍 Va en:</span> ${esc(S(f.donde))} · <span>Qué muestra:</span> ${esc(S(f.alt))}<span class="lp-up" data-slot="${esc(S(f.id))}"></span>`, lpPromptFoto(f, r))).join("")}`; }catch(e){ lpImgTab = ""; } }
   if(r.__input && !r.__radar){ try{ lpTab = lpTabHTML(r, pb); }catch(e){ lpTab = `<h2>🛒 Landing de ventas</h2><div class="warn">No se pudo mostrar la landing: ${esc(S(e?.message||e))}. El resto de la hoja de ruta funciona normal.</div>`; } }
   const tabs = [["inicio","Inicio"], ...(r.meta ? [["meta","📣 Cómo pautar en Meta"]] : []), ...(A(r.imagenes_ad).length ? [["imagenes","🖼️ Anuncios de imagen"]] : []), ...(compTab ? [["competencia","🕵️ Competencia"]] : []), ...(lpTab ? [["landing","🛒 Landing"]] : []), ...(lpImgTab ? [["lpimg","📸 Prompts img landing"]] : []), ["mercado","Mercado y números"], ...vs.map((v,k)=>["v"+(k+1), `${S(v.id,"V"+(k+1))} · ${S(v.nombre)}`]), ["ganchos","Ganchos"]];
@@ -3334,7 +3335,7 @@ function lpWire(root, r){
   });
   ctrl.querySelector(".lp-wa").addEventListener("change", e=>{ L.__wa = e.target.value.replace(/\D/g,""); e.target.value = L.__wa; store.set("ac.lwa", L.__wa); rmUpdate(r); refresh(); });
   ctrl.querySelector(".lp-px").addEventListener("change", e=>{ L.__pixel = e.target.value.replace(/\D/g,""); e.target.value = L.__pixel; store.set("ac.lpixel", L.__pixel); rmUpdate(r); refresh(); });
-  ctrl.querySelector(".lp-dl").addEventListener("click", async e=>{
+  root.querySelectorAll(".lp-dl").forEach(dl=>dl.addEventListener("click", async e=>{
     const b = e.currentTarget, name = "Landing_" + slug + ".html";
     try{ const blob = new Blob([await lpStandalone(r)], {type:"text/html"});
       if(downloads) await downloads.save({filename:name, data:blob});
@@ -3342,7 +3343,7 @@ function lpWire(root, r){
       b.textContent = "Descargada"; }
     catch{ b.textContent = "No se descargó"; }
     setTimeout(()=>b.textContent = "⬇️ Descargar landing (HTML)", 2000);
-  });
+  }));
   const st = ctrl.querySelector(".lp-st"), pub = ctrl.querySelector(".lp-pub");
   const paintEstado = d => {
     if(!d) return;
