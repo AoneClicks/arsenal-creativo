@@ -2580,6 +2580,34 @@ const LP_TEMAS = {
   navidad: {n:"Navidad (verde, rojo y dorado)", head:"Fraunces", body:"DM Sans", gf:"Fraunces:opsz,wght@9..144,700;9..144,800&family=DM+Sans:wght@500;700;800;900", bg:"#FCF7EE", bg2:"#F1E6D2", card:"#FFFFFF", line:"#E6D9C2", txt:"#173A2E", muted:"#5E6B60", head_c:"#173A2E", acc:"#C61F2F", acc2:"#D9A93F", deep:"#173A2E", deeptxt:"#F3EEDF", top:"#173A2E", pat:"xmas"},
   vibrante:{n:"Vibrante moderno", head:"Poppins", body:"Poppins", gf:"Poppins:wght@500;600;700;800;900", bg:"#FFFFFF", bg2:"#FFF2EA", card:"#FFFFFF", line:"#FFD9C2", txt:"#1F1A17", muted:"#6E625B", head_c:"#16110E", acc:"#FF5A1F", acc2:"#FFC93C", deep:"#1C1230", deeptxt:"#F3EEFF", top:"#16110E"}
 };
+/* Fondos decorativos según el producto, la categoría o la temporada (pedido de Andrés, 2026-11-20: "un fondo más llamativo
+   y acorde a cada producto"; ejemplo navideño: la landing de Lo Máximo del forro de sofá). Son dibujos SVG suaves que se
+   repiten detrás de las secciones, sin tapar el texto. Las letras y el diseño de cada estilo no cambian. */
+const LP_PAT = {calido:"estrellas", noche:"brillos", fresco:"burbujas", lavanda:"puntos", durazno:"petalos", lujo:"lineas", navidad:"xmas", vibrante:"confeti"};
+function lpPatron(T, key){
+  const svg = (w, body) => `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='${w}' height='${w}' viewBox='0 0 ${w} ${w}'>${body}</svg>`)}")`;
+  const star = (x,y,r,c,o) => `<path d='M${x} ${y-r}Q${x} ${y} ${x+r} ${y}Q${x} ${y} ${x} ${y+r}Q${x} ${y} ${x-r} ${y}Q${x} ${y} ${x} ${y-r}Z' fill='${c}' opacity='${o}'/>`;
+  const snow = (x,y,r,c,o) => `<g stroke='${c}' stroke-width='1.6' stroke-linecap='round' opacity='${o}'>${[0,60,120].map(a=>{const d=a*Math.PI/180,dx=(r*Math.cos(d)).toFixed(1),dy=(r*Math.sin(d)).toFixed(1);return `<line x1='${x-dx}' y1='${y-dy}' x2='${x+ +dx}' y2='${y+ +dy}'/>`;}).join("")}</g>`;
+  const dot = (x,y,r,c,o) => `<circle cx='${x}' cy='${y}' r='${r}' fill='${c}' opacity='${o}'/>`;
+  const ring = (x,y,r,c,o) => `<circle cx='${x}' cy='${y}' r='${r}' fill='none' stroke='${c}' stroke-width='2' opacity='${o}'/>`;
+  const rect = (x,y,w,h,a,c,o) => `<rect x='${x}' y='${y}' width='${w}' height='${h}' rx='1.5' fill='${c}' opacity='${o}' transform='rotate(${a} ${x+w/2} ${y+h/2})'/>`;
+  const k = LP_PAT[key] || T.pat || "";
+  let claro = "", oscuro = "", extra = "";
+  if(k==="xmas"){
+    claro = svg(160, star(22,26,9,T.acc2,.55)+snow(118,40,9,T.head_c,.13)+dot(70,78,3,T.acc,.3)+star(132,120,6,T.acc2,.45)+snow(36,128,7,T.acc,.14)+dot(96,150,2.5,T.head_c,.18)+star(84,18,4,T.acc,.3));
+    oscuro = svg(160, star(22,26,9,T.acc2,.45)+snow(118,40,9,"#FFFFFF",.16)+dot(70,78,3,"#FFFFFF",.22)+star(132,120,6,T.acc2,.38)+snow(36,128,7,"#FFFFFF",.12)+star(84,18,4,"#FFFFFF",.3));
+    // Franja de bastón de caramelo debajo de la barra superior y encima de las secciones oscuras.
+    extra = `.topbar{border-bottom:5px solid transparent;border-image:repeating-linear-gradient(-45deg,${T.acc} 0 9px,#FFFFFF 9px 18px,${T.ok||"#128C4B"} 18px 27px,#FFFFFF 27px 36px) 5}.deep{border-top:5px solid transparent;border-image:repeating-linear-gradient(-45deg,${T.acc} 0 9px,#FFFFFF 9px 18px) 5}.buy{background:radial-gradient(120% 70% at 50% 0%,color-mix(in srgb,${T.acc2} 22%,transparent),transparent 70%)}`;
+  } else if(k==="estrellas"){ claro = svg(150, star(24,28,7,T.acc2,.5)+dot(96,60,2.5,T.acc,.25)+star(118,118,5,T.acc,.25)+dot(40,120,2,T.acc2,.5)); oscuro = svg(150, star(24,28,7,T.acc2,.4)+star(118,118,5,"#FFFFFF",.22)+dot(70,80,2,"#FFFFFF",.3)); }
+  else if(k==="brillos"){ claro = svg(140, star(20,24,6,T.acc,.45)+star(100,70,4,T.acc2,.5)+dot(60,110,1.6,"#FFFFFF",.5)+dot(124,20,1.2,"#FFFFFF",.6)+star(40,90,3,"#FFFFFF",.35)); oscuro = claro; }
+  else if(k==="burbujas"){ claro = svg(150, ring(30,34,14,T.acc,.12)+ring(110,90,9,T.acc,.14)+dot(70,130,4,T.acc2,.4)+ring(128,24,5,T.acc,.16)); oscuro = svg(150, ring(30,34,14,"#FFFFFF",.1)+ring(110,90,9,T.acc2,.18)); }
+  else if(k==="puntos"){ claro = svg(120, dot(20,20,3,T.acc2,.7)+dot(80,50,2,T.acc,.25)+star(50,96,5,T.acc2,.6)+dot(104,104,2.5,T.acc2,.6)); oscuro = svg(120, dot(20,20,2.5,T.acc2,.4)+star(50,96,5,T.acc2,.35)); }
+  else if(k==="petalos"){ claro = svg(140, `<ellipse cx='30' cy='30' rx='9' ry='4' fill='${T.acc2}' opacity='.55' transform='rotate(35 30 30)'/><ellipse cx='104' cy='88' rx='7' ry='3.4' fill='${T.acc}' opacity='.18' transform='rotate(-25 104 88)'/>`+dot(70,124,2.5,T.acc2,.6)); oscuro = svg(140, dot(30,30,2.5,T.acc2,.35)+dot(104,88,2,T.acc2,.3)); }
+  else if(k==="lineas"){ claro = svg(60, `<path d='M0 60L60 0' stroke='${T.acc}' stroke-width='1' opacity='.09'/>`+star(44,44,3,T.acc,.35)); oscuro = claro; extra = `.topbar{border-bottom:2px solid ${T.acc}}`; }
+  else if(k==="confeti"){ claro = svg(150, rect(18,22,10,4,30,T.acc,.35)+rect(100,40,8,4,-20,T.acc2,.6)+dot(64,90,3.5,T.acc,.25)+rect(120,118,9,4,60,T.acc,.3)+dot(30,128,3,T.acc2,.6)); oscuro = svg(150, rect(18,22,10,4,30,T.acc2,.45)+dot(64,90,3,T.acc,.4)+rect(120,118,9,4,60,"#FFFFFF",.25)); }
+  if(!claro) return "";
+  return `.lp,.b1{background-color:var(--bg);background-image:${claro}}.b2{background-color:var(--bg2);background-image:${claro}}.deep{background-color:var(--deep);background-image:${oscuro}}${extra}`;
+}
 // WhatsApp de la tienda conectado a ChateaPro (pedido de Andrés, 2026-11-13): todas las landings mandan el pedido aquí.
 const LP_WA_TIENDA = "573238849321";
 const LP_PIXEL = "2907640152948509"; // Pixel Aoneclicks 1 (2026-11-19): va por defecto en todas las landings
