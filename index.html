@@ -2744,7 +2744,7 @@ ${A(L.faq).length ? `<section class="sec b1"><div class="wrap"><p class="eyebrow
 <p class="legal">${esc(marca)} · ${esc(S(L.nombre_largo))}. ${esc(S(L.legal, seguro ? "No es un medicamento ni reemplaza la consulta médica. Los resultados varían según cada persona. Las fotos son de referencia." : "Las fotos son de referencia."))}</p>
 <div class="sbar off"><div class="pp"><small>Hoy</small><b>${money(P1.precio)}</b></div><button type="button" class="cta" data-buy=""><b>${esc(cta)}</b><small>Pagas al recibir · Envío gratis</small></button></div>
 </div>
-<div class="ov" id="ov"><div class="fp" role="dialog" aria-label="Hacer pedido"><button type="button" class="x" aria-label="Cerrar">×</button><h3>${esc(marca)}</h3><p class="s" style="margin:0 0 8px;color:var(--muted)">✓ Pagas al recibir · ✓ Envío gratis</p>
+<div class="ov" id="ov"><div class="fp" role="dialog" aria-label="Hacer pedido"><button type="button" class="x" aria-label="Cerrar">×</button><h3>Último paso: tus datos de entrega</h3><div class="sum">${G[0] ? lpFoto(G[0], fotos, "oimg") : ""}<div><b>${esc(marca)}</b><span>✓ Pagas al recibir · ✓ Envío gratis · ✓ 2 a 5 días hábiles</span></div></div>
 <label>¿Cuántos quieres?</label><div class="offers">${offer}</div>
 <label for="fCel">Celular con WhatsApp</label><input id="fCel" inputmode="numeric" autocomplete="tel" placeholder="3001234567">
 <label for="fNom">Nombre y apellido</label><input id="fNom" autocomplete="name">
