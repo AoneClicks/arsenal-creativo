@@ -2769,7 +2769,8 @@ function lpTabHTML(r, pb){
 <h3>Vista previa (así se ve en el celular)</h3>
 <iframe class="lp-frame" title="Vista previa de la landing" srcdoc="${esc(landingHTML(r))}"></iframe>
 <h3>Estructura, en orden</h3><ol class="steps"><li>Franja de confianza (pago contra entrega, envío gratis) y marca</li><li>Galería de ${A(L.galeria).length} fotos</li><li>Caja de compra: ${esc(S(L.titular).replace(/\*/g,""))}</li><li>Cinta de beneficios</li>${A(L.secciones).map(s=>`<li>${esc(tipos[s.tipo] || S(s.tipo))}: ${esc(S(s.titulo).replace(/\*/g,""))}</li>`).join("")}<li>Oferta: ${lpPacks(r).map(p=>`${esc(p.titulo)} ${money(p.precio)}`).join(" · ")}</li><li>Preguntas frecuentes (${A(L.faq).length})</li><li>Cierre: ${esc(S(L.cierre?.titulo))}</li></ol>
-<h3>Fotos de la landing</h3><p>Genéralas en Google Flow adjuntando la hoja de producto <b>P0</b>. Luego súbelas aquí, en el panel, con <b>Subir foto</b>. Hasta que las subas, la landing muestra un recuadro en su lugar.</p>
+<h3>Fotos de la landing</h3><p>Toca <b>🎨 Crear las fotos con IA</b> (arriba) y el panel crea y pone todas las fotos solo, con tu Gemini. Para que el producto salga idéntico, sube primero la <b>foto real del producto</b> (la del proveedor en Dropi). Si una no te gusta, cámbiala con <b>Cambiar foto</b> o hazla en Google Flow con su prompt.</p>
+<div class="card">📸 <b>Foto real del producto</b> (referencia para la IA) <span class="lp-up" data-slot="ref"></span></div>
 ${slots.map(f=>pb(`${S(f.id)} · ${S(f.donde)}`, `<span>Qué muestra:</span> ${esc(S(f.alt))}<span class="lp-up" data-slot="${esc(S(f.id))}"></span>`, lpPromptFoto(f, r))).join("")}`;
 }
 /* Lista de fotos que pide la landing (para generarlas en Flow y subirlas). */
