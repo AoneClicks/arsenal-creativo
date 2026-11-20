@@ -2586,11 +2586,13 @@ function lpPacks(r){
   return base.map((p,k)=>{ const n = Math.max(1, Math.round(+p.n || k+1)); const precio = n===1 ? P1 : (lpPrecio(C, n) || P1*n); const antes = n>1 ? P1*n : 0;
     return {n, titulo:S(p.titulo, n + (n===1 ? " unidad" : " unidades")), sub:S(p.sub), badge:S(p.badge), precio, antes, ahorro: antes ? antes - precio : 0, cu: Math.round(precio / n)}; });
 }
+// El nombre del producto lo escribe Andrés en "Qué hace y qué NO hace": (nombre producto Conjunto Premium X).
+const lpNombreDe = i => S((S(i?.hace).match(/\(\s*nombre\s+(?:del\s+)?producto\s*:?\s*([^)]+?)\s*\)/i)||[])[1]).trim();
 function rmLandingPrompt(i, r){
   const seguro = r.modo==="seguro", p = r.producto || {}, packs = lpPacks({...r, landing:{}});
   return `Eres el mejor diseñador de landings de venta contraentrega de ${i.pais}. Vas a escribir la landing de un solo producto copiando la ESTRUCTURA y el ESTILO de las landings ganadoras de la tienda Lo Máximo (AMUA, Parrandero, Meduluz, TinniDrop, Revela). Cada pieza de texto es corta, concreta, en español colombiano natural, con emojis medidos.
 PRODUCTO: ${i.nombre}. Verdad del producto: ${i.hace}. Se ve como (inglés): ${S(p.subject_en)}.
-NOMBRE DEL PRODUCTO (regla de Andrés, 2026-11-19): el producto se llama como lo vende la tienda que MÁS vende en Colombia${S(r.competencia?.tienda_top?.nombre) ? `: "${S(r.competencia.tienda_top.nombre)}" (tienda ${S(r.competencia.tienda_top.tienda, "líder")})` : ". Si no tienes ese dato, usa el nombre más común con que se vende en Colombia"}. Pon ese nombre EXACTO en "nombre_largo". Si ese nombre trae una marca propia del producto, úsala en "marca"; si no, inventa una marca corta (nunca una marca registrada de otra empresa).
+NOMBRE DEL PRODUCTO (regla de Andrés, 2026-11-19): el producto se llama EXACTAMENTE "${lpNombreDe(i) || i.nombre}". Pon ese nombre tal cual en "nombre_largo", sin cambiarle ni una letra. La "marca" es aparte: inventa una corta (nunca una marca registrada de otra empresa).
 Regla del producto: ${S(p.regla)}. Temporada: ${i.temporada || "ninguna"}.
 Precio 1 unidad: ${money(packs[0].precio)}. 2 unidades: ${money(packs[1].precio)}. 3 unidades: ${money(packs[2].precio)}. Envío gratis y pago contra entrega en ${i.pais}. Llega en 2 a 5 días hábiles.
 Lo que funciona del anuncio ganador: ${S(r.ganador?.por_que)}. Ganchos de los videos: ${A(r.ganchos).map(g=>S(g.dice)).filter(Boolean).slice(0,5).join(" | ")}.
@@ -2624,7 +2626,7 @@ function lpFoto(f, fotos, cls){
   return `<div class="ph ${cls||""}"><span>${esc(S(f?.e,"📷"))}</span><small>Foto: ${esc(S(f?.alt,"del producto"))}</small></div>`;
 }
 function landingHTML(r, opt={}){
-  const L = r.landing || {}, T = LP_TEMAS[L.tema] || (r.modo==="seguro" ? LP_TEMAS.fresco : LP_TEMAS.calido);
+  const L = r.landing || {}, NL = lpNombreDe(r.__input) || S(L.nombre_largo), T = LP_TEMAS[L.tema] || (r.modo==="seguro" ? LP_TEMAS.fresco : LP_TEMAS.calido);
   const fotos = opt.fotos || L.__fotos || {}, wa = (S(opt.wa, S(L.__wa)).replace(/\D/g,"") || LP_WA_TIENDA), pixel = (S(opt.pixel, S(L.__pixel)).replace(/\D/g,"") || LP_PIXEL);
   const packs = lpPacks(r), sel = packs.length > 1 ? 1 : 0, P1 = packs[0];
   const marca = S(L.marca, S(r.__input?.nombre,"Producto")), cta = S(L.cta, "QUIERO EL MÍO");
@@ -2704,7 +2706,7 @@ details{border:0;border-radius:16px;box-shadow:inset 0 0 0 1px var(--line)}summa
 .fp .sum{display:flex;gap:12px;align-items:center;background:var(--card);border-radius:14px;padding:10px;margin:6px 0 4px;box-shadow:inset 0 0 0 1px var(--line)}.fp .sum .oimg,.fp .sum img{width:56px;height:56px;flex:0 0 56px;border-radius:10px;object-fit:cover;padding:0}.fp .sum .oimg span{font-size:1.2rem}.fp .sum .oimg small{display:none}.fp .sum b{display:block;color:var(--head)}.fp .sum span{font-size:.8rem;color:var(--muted)}
 .js .rv{opacity:0;transform:translateY(18px)}.js .rv.in{opacity:1;transform:none;transition:opacity .6s ease,transform .6s ease}
 @media (prefers-reduced-motion:reduce){.track,.cta{animation:none}.js .rv{opacity:1;transform:none}}`;
-  const script = `(function(){var P=${JSON.stringify(packs.map(p=>({n:p.n,t:p.titulo,p:p.precio})))},WA=${JSON.stringify(wa)},NAME=${JSON.stringify(marca + " · " + S(L.nombre_largo))},sel=${sel};
+  const script = `(function(){var P=${JSON.stringify(packs.map(p=>({n:p.n,t:p.titulo,p:p.precio})))},WA=${JSON.stringify(wa)},NAME=${JSON.stringify(marca + " · " + S(NL))},sel=${sel};
 var $=function(s){return document.querySelector(s)},$$=function(s){return Array.prototype.slice.call(document.querySelectorAll(s))};
 var g=$('.gtrack'),th=$$('.thumbs button'),gi=0;function go(i){if(!g)return;gi=(i+th.length)%Math.max(1,th.length);g.style.transform='translateX(-'+gi*100+'%)';th.forEach(function(b,j){b.classList.toggle('on',j===gi)})}th.forEach(function(b,j){b.onclick=function(){go(j)}});if(th.length>1)setInterval(function(){go(gi+1)},4500);
 function money(n){return '$'+Math.round(n).toLocaleString('es-CO')}
@@ -2724,12 +2726,12 @@ try{var e1=$('#eta1'),e2=$('#eta2');if(e1)e1.textContent=biz(2);if(e2)e2.textCon
 if('IntersectionObserver' in window){document.documentElement.classList.add('js');var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}})},{rootMargin:'0px 0px -8% 0px'});$$('.sec h2,.sec .lead,.card,.steps3>div,.sec figure,.sec .offer,details,blockquote,.cmp,.how li,.seal,.nolist li,.silist li,.stop').forEach(function(el){el.classList.add('rv');io.observe(el)})}
 })();`;
   const pix = pixel ? `<script>!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','${pixel}');fbq('track','PageView');<\/script>` : "";
-  return `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>${esc(marca)} · ${esc(S(L.nombre_largo, r.__input?.nombre))}</title><meta name="description" content="${esc(S(L.pregunta))}">
+  return `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>${esc(marca)} · ${esc(S(NL, r.__input?.nombre))}</title><meta name="description" content="${esc(S(L.pregunta))}">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=${T.gf}&display=swap" rel="stylesheet"><style>${css}</style>${pix}</head><body><div class="lp">
 <div class="topbar"><div class="track">${[...top, ...top].map(t=>`<span>${esc(S(t))}</span>`).join("")}</div></div>
 <div class="nav">${esc(marca)}</div>
 ${G.length ? `<div class="gal"><span class="gbadge">🚚 Envío gratis · 💵 Pagas al recibir</span><div class="gtrack">${G.map(f=>lpFoto(f, fotos)).join("")}</div></div><div class="thumbs">${G.map((f,j)=>`<button type="button" class="${j?"":"on"}" aria-label="Foto ${j+1}">${lpFoto(f, fotos)}</button>`).join("")}</div>` : ""}
-<div class="buy">${L.kicker ? `<p class="kicker">${esc(S(L.kicker))}</p>` : ""}${L.nombre_largo ? `<p class="pname">${esc(S(L.nombre_largo))}</p>` : ""}<h1>${lpEm(L.titular)}</h1>${L.pregunta ? `<p class="hook2">${lpEm(L.pregunta)}</p>` : ""}
+<div class="buy">${L.kicker ? `<p class="kicker">${esc(S(L.kicker))}</p>` : ""}${NL ? `<p class="pname">${esc(S(NL))}</p>` : ""}<h1>${lpEm(L.titular)}</h1>${L.pregunta ? `<p class="hook2">${lpEm(L.pregunta)}</p>` : ""}
 <ul class="ben">${A(L.beneficios).slice(0,5).map(b=>`<li>${lpEm(b)}</li>`).join("")}</ul>
 <div class="pricebar"><div><div class="k">${seguro ? "Precio" : "Precio de temporada"}</div><div class="p">${money(P1.precio)}</div><div class="k" style="color:var(--muted)">${esc(P1.titulo)}</div></div><div class="r">🚚 Envío gratis<br>💵 Pagas al recibir<br>📦 Producto sellado</div></div>
 <p class="eta">📦 Pide hoy y te llega entre el <b id="eta1">2</b> y el <b id="eta2">5.º día hábil</b></p>
@@ -2742,7 +2744,7 @@ ${secciones}
 <section class="sec deep" id="oferta"><div class="wrap"><p class="eyebrow">${seguro ? "PÍDELO HOY" : "OFERTA DE TEMPORADA"}</p><h2>${lpEm(S(L.oferta_titulo, "Tu " + marca + " en la puerta de tu casa"))}</h2><p class="lead">Envío gratis y pagas en efectivo cuando te lo entreguen.</p><div class="offers">${offer}</div><button type="button" class="cta" data-buy=""><b>HACER MI PEDIDO</b><small>Pagas cuando te llegue</small></button></div></section>
 ${A(L.faq).length ? `<section class="sec b1"><div class="wrap"><p class="eyebrow">PREGUNTAS FRECUENTES</p><h2>Resolvemos tus dudas</h2>${A(L.faq).map(f=>`<details><summary>${esc(S(f.q))}</summary><p>${esc(S(f.a))}</p></details>`).join("")}</div></section>` : ""}
 <section class="sec deep final"><div class="wrap"><h2>${lpEm(S(L.cierre?.titulo, "Pídelo hoy"))}</h2><p class="lead">${esc(S(L.cierre?.sub, "Te llega gratis y lo pagas cuando lo recibas."))}</p><button type="button" class="cta" data-buy=""><b>${esc(cta)}</b><small>Envío gratis y pago contra entrega</small></button><div class="mini" style="color:var(--deeptxt)"><span>Envío gratis</span><span>Pagas al recibir</span><span>Producto sellado</span></div></div></section>
-<p class="legal">${esc(marca)} · ${esc(S(L.nombre_largo))}. ${esc(S(L.legal, seguro ? "No es un medicamento ni reemplaza la consulta médica. Los resultados varían según cada persona. Las fotos son de referencia." : "Las fotos son de referencia."))}</p>
+<p class="legal">${esc(marca)} · ${esc(S(NL))}. ${esc(S(L.legal, seguro ? "No es un medicamento ni reemplaza la consulta médica. Los resultados varían según cada persona. Las fotos son de referencia." : "Las fotos son de referencia."))}</p>
 <div class="sbar off"><div class="pp"><small>Hoy</small><b>${money(P1.precio)}</b></div><button type="button" class="cta" data-buy=""><b>${esc(cta)}</b><small>Pagas al recibir · Envío gratis</small></button></div>
 </div>
 <div class="ov" id="ov"><div class="fp" role="dialog" aria-label="Hacer pedido"><button type="button" class="x" aria-label="Cerrar">×</button><h3>Último paso: tus datos de entrega</h3><div class="sum">${G[0] ? lpFoto(G[0], fotos, "oimg") : ""}<div><b>${esc(marca)}</b><span>✓ Pagas al recibir · ✓ Envío gratis · ✓ 2 a 5 días hábiles</span></div></div>
@@ -3329,7 +3331,7 @@ function lpWire(root, r){
     pub.addEventListener("click", async ()=>{
       if(!L.__wa || L.__wa.length < 10){ st.textContent = "Primero escribe el WhatsApp que recibe los pedidos."; return; }
       if(Object.values(L.__fotos).some(v=>/^data:/.test(S(v)))){ st.textContent = "Hay fotos que no quedaron guardadas en el panel. Súbelas otra vez desde el panel de Claude antes de publicar."; return; }
-      if(!armed){ armed = true; pub.textContent = "Toca otra vez para confirmar"; st.innerHTML = `¿Publicar <b>${esc(S(L.marca))}</b> en <b>${esc(LP_BASE + slug)}/</b>? ${Object.keys(L.__fotos).length < lpSlots(r).length ? "⚠️ Aún faltan fotos: saldrán recuadros en su lugar. " : ""}Toca otra vez para confirmar.`; setTimeout(()=>{ if(armed){ armed = false; pub.textContent = "🚀 Publicar en GitHub"; } }, 8000); return; }
+      if(!armed){ armed = true; pub.textContent = "Toca otra vez para confirmar"; st.innerHTML = `¿Publicar <b>${esc(S(L.marca))}</b> en <b>${esc(LP_BASE + slug)}/</b>? ${lpSlots(r).some(f=>!L.__fotos[f.id]) ? "⚠️ Aún faltan fotos: saldrán recuadros en su lugar. " : ""}Toca otra vez para confirmar.`; setTimeout(()=>{ if(armed){ armed = false; pub.textContent = "🚀 Publicar en GitHub"; } }, 8000); return; }
       armed = false; pub.disabled = true; pub.textContent = "Enviando…";
       const doc = {slug, nombre:S(r.__input?.nombre), marca:S(L.marca), estado:"pendiente", at:Date.now(), wa:L.__wa, pixel:L.__pixel, fotos:L.__fotos, url:LP_BASE + slug + "/", html:landingHTML(r)};
       try{ await db.collection("landings").doc(slug).set(doc); paintEstado(doc); pub.textContent = "🚀 Publicar en GitHub"; pub.disabled = false; toast("Listo: Claude publicará la landing en GitHub."); }
