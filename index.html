@@ -2771,7 +2771,7 @@ function lpTabHTML(r, pb){
 <h3>Vista previa (así se ve en el celular)</h3>
 <iframe class="lp-frame" title="Vista previa de la landing" srcdoc="${esc(landingHTML(r))}"></iframe>
 <h3>Estructura, en orden</h3><ol class="steps"><li>Franja de confianza (pago contra entrega, envío gratis) y marca</li><li>Galería de ${A(L.galeria).length} fotos</li><li>Caja de compra: ${esc(S(L.titular).replace(/\*/g,""))}</li><li>Cinta de beneficios</li>${A(L.secciones).map(s=>`<li>${esc(tipos[s.tipo] || S(s.tipo))}: ${esc(S(s.titulo).replace(/\*/g,""))}</li>`).join("")}<li>Oferta: ${lpPacks(r).map(p=>`${esc(p.titulo)} ${money(p.precio)}`).join(" · ")}</li><li>Preguntas frecuentes (${A(L.faq).length})</li><li>Cierre: ${esc(S(L.cierre?.titulo))}</li></ol>
-<h3>Fotos de la landing</h3><p>Toca <b>🎨 Crear las fotos con IA</b> (arriba) y el panel crea y pone todas las fotos solo, con tu Gemini. Para que el producto salga idéntico, sube primero la <b>foto real del producto</b> (la del proveedor en Dropi). Si una no te gusta, cámbiala con <b>Cambiar foto</b> o hazla en Google Flow con su prompt.</p>
+<h3>Fotos de la landing</h3><p>Toca <b>🎨 Crear las fotos con IA</b> (arriba) y el panel crea y pone todas las fotos solo, con tu Gemini. Para que el producto salga idéntico, sube primero la <b>foto real del producto</b> (la del proveedor en Dropi). Si prefieres hacerlas en Google Flow, todos los prompts están en la pestaña <b>📸 Prompts img landing</b>; luego súbelas aquí con <b>Subir foto</b>.</p>
 <div class="card">📸 <b>Foto real del producto</b> (referencia para la IA) <span class="lp-up" data-slot="ref"></span></div>
 ${slots.map(f=>pb(`${S(f.id)} · ${S(f.donde)}`, `<span>Qué muestra:</span> ${esc(S(f.alt))}<span class="lp-up" data-slot="${esc(S(f.id))}"></span>`, lpPromptFoto(f, r))).join("")}`;
 }
@@ -2950,8 +2950,14 @@ function rmBody(r){
     + (A(c.como_superarlos).length ? `<h3>🏆 Cómo vas a ser mejor que ellos</h3>${li(c.como_superarlos)}` : "")
     + (A(c.fuentes).length ? `<h3>Fuentes</h3><ol class="steps">${A(c.fuentes).map(u=>`<li>${linkify(S(u))}</li>`).join("")}</ol>` : ""); }
   let lpTab = "";
+  // Pestaña aparte con los prompts de las fotos de la landing (pedido de Andrés, 2026-11-19), para hacerlas en Google Flow.
+  let lpImgTab = "";
+  if(r.landing){ try{ const sl = lpSlots(r);
+    if(sl.length) lpImgTab = `<h2>📸 Prompts para img de landing</h2><div class="card hero"><div class="big" style="font-size:1.6rem">📸</div><div>Estos prompts son <b>solo para las fotos de la landing</b> (no para los anuncios). Hazlas en <b>Google Flow</b>: adjunta la foto real del producto (o la hoja de producto <b>P0</b>), pega el prompt y genera en <b>cuadrado 1:1</b>. Después súbelas en la pestaña <b>🛒 Landing</b>, cada una en su lugar, con <b>Subir foto</b>.</div></div>
+<p>Son <b>${sl.length} fotos</b>, en el orden en que salen en la landing.</p>
+${sl.map((f,j)=>pb(`Foto ${j+1} · ${S(f.donde)}`, `<span>Qué muestra:</span> ${esc(S(f.alt))}${r.landing.__fotos?.[f.id] ? " · ✅ ya está puesta" : ""}`, lpPromptFoto(f, r))).join("")}`; }catch(e){ lpImgTab = ""; } }
   if(r.__input && !r.__radar){ try{ lpTab = lpTabHTML(r, pb); }catch(e){ lpTab = `<h2>🛒 Landing de ventas</h2><div class="warn">No se pudo mostrar la landing: ${esc(S(e?.message||e))}. El resto de la hoja de ruta funciona normal.</div>`; } }
-  const tabs = [["inicio","Inicio"], ...(r.meta ? [["meta","📣 Cómo pautar en Meta"]] : []), ...(A(r.imagenes_ad).length ? [["imagenes","🖼️ Anuncios de imagen"]] : []), ...(compTab ? [["competencia","🕵️ Competencia"]] : []), ...(lpTab ? [["landing","🛒 Landing"]] : []), ["mercado","Mercado y números"], ...vs.map((v,k)=>["v"+(k+1), `${S(v.id,"V"+(k+1))} · ${S(v.nombre)}`]), ["ganchos","Ganchos"]];
+  const tabs = [["inicio","Inicio"], ...(r.meta ? [["meta","📣 Cómo pautar en Meta"]] : []), ...(A(r.imagenes_ad).length ? [["imagenes","🖼️ Anuncios de imagen"]] : []), ...(compTab ? [["competencia","🕵️ Competencia"]] : []), ...(lpTab ? [["landing","🛒 Landing"]] : []), ...(lpImgTab ? [["lpimg","📸 Prompts img landing"]] : []), ["mercado","Mercado y números"], ...vs.map((v,k)=>["v"+(k+1), `${S(v.id,"V"+(k+1))} · ${S(v.nombre)}`]), ["ganchos","Ganchos"]];
 
   let inicio = "";
   if(r.meta){ const rc = r.meta.recomendacion || {}; inicio += `<div class="card hero"><div class="big" style="font-size:1.6rem">📣</div><div><b>Cómo pautarlo en Meta:</b> objetivo <b>${esc(S(rc.objetivo))}</b>${rc.ubicacion ? ` · ${esc(S(rc.ubicacion))}` : ""}${rc.rendimiento ? ` · ${esc(S(rc.rendimiento))}` : ""}.<br>Todo campo por campo, con títulos y descripciones listos para copiar, en la pestaña <b>📣 Cómo pautar en Meta</b> de arriba.</div></div>`; }
@@ -3174,8 +3180,8 @@ ${prodLines}
     if(A(au.referencias).length) aud += `<h3>Referencias a revisar antes de adjuntar</h3><ol class="steps">${A(au.referencias).map(x=>`<li>${esc(S(x))}</li>`).join("")}</ol>`;
 
     const gan = A(r.ganchos).length ? `<h2>Banco de ganchos</h2><p>Cada uno reemplaza los primeros 3 segundos de una variación, con lenguaje seguro.</p>` + table(["#","Qué se ve","Qué se dice","Nivel","Va con"], A(r.ganchos).map((x,k)=>["G"+(k+1), x.ve, x.dice, x.nivel, x.va_con])) : "";
-    const tb = [["intro","Diálogo y ruta"], ...(r.meta ? [["meta","📣 Cómo pautar en Meta"]] : []), ...(A(r.imagenes_ad).length ? [["imagenes","🖼️ Anuncios de imagen"]] : []), ...(compTab ? [["competencia","🕵️ Competencia"]] : []), ...(lpTab ? [["landing","🛒 Landing"]] : []), ["mercado","Mercado y números"], ...V.map((v,k)=>["v"+(k+1), `${S(v.id,"V"+(k+1))} · ${S(v.corto, v.nombre)}`]), ["audit","Auditoría"], ...(gan ? [["ganchos","Ganchos"]] : [])];
-    const sc = [["intro",intro], ...(r.meta ? [["meta",meta]] : []), ...(A(r.imagenes_ad).length ? [["imagenes",imgs]] : []), ...(compTab ? [["competencia",compTab]] : []), ...(lpTab ? [["landing",lpTab]] : []), ["mercado",merc], ...vTabs.map((x,k)=>["v"+(k+1), x]), ["audit",aud], ...(gan ? [["ganchos",gan]] : [])];
+    const tb = [["intro","Diálogo y ruta"], ...(r.meta ? [["meta","📣 Cómo pautar en Meta"]] : []), ...(A(r.imagenes_ad).length ? [["imagenes","🖼️ Anuncios de imagen"]] : []), ...(compTab ? [["competencia","🕵️ Competencia"]] : []), ...(lpTab ? [["landing","🛒 Landing"]] : []), ...(lpImgTab ? [["lpimg","📸 Prompts img landing"]] : []), ["mercado","Mercado y números"], ...V.map((v,k)=>["v"+(k+1), `${S(v.id,"V"+(k+1))} · ${S(v.corto, v.nombre)}`]), ["audit","Auditoría"], ...(gan ? [["ganchos","Ganchos"]] : [])];
+    const sc = [["intro",intro], ...(r.meta ? [["meta",meta]] : []), ...(A(r.imagenes_ad).length ? [["imagenes",imgs]] : []), ...(compTab ? [["competencia",compTab]] : []), ...(lpTab ? [["landing",lpTab]] : []), ...(lpImgTab ? [["lpimg",lpImgTab]] : []), ["mercado",merc], ...vTabs.map((x,k)=>["v"+(k+1), x]), ["audit",aud], ...(gan ? [["ganchos",gan]] : [])];
     return `<div class="rm td"><header><h1>${esc(S(r.titulo, r.__input?.nombre || "Hoja de ruta"))}</h1><p>${esc(S(r.subtitulo))}</p>
 <nav class="tabs">${tb.map(([k,l],j)=>`<button data-k="${k}" class="${j===0?"on":""}">${esc(l)}</button>`).join("")}</nav></header>
 <main>${sc.map(([k,x],j)=>`<section class="tab${j===0?" on":""}" id="${k}">${x}</section>`).join("")}</main></div>`;
@@ -3208,7 +3214,7 @@ ${prodLines}
 <nav class="tabs">${tb.map(([k,l],j)=>`<button data-k="${k}" class="${j===0?"on":""}">${esc(l)}</button>`).join("")}</nav></header>
 <main>${sc.map(([k,x],j)=>`<section class="tab${j===0?" on":""}" id="${k}">${x}</section>`).join("")}</main></div>`;
   }
-  const sections = [["inicio",inicio], ...(r.meta ? [["meta",meta]] : []), ...(A(r.imagenes_ad).length ? [["imagenes",imgs]] : []), ...(compTab ? [["competencia",compTab]] : []), ...(lpTab ? [["landing",lpTab]] : []), ["mercado",merc], ...varTabs.map((s,k)=>["v"+(k+1), s]), ["ganchos",ganchos]];
+  const sections = [["inicio",inicio], ...(r.meta ? [["meta",meta]] : []), ...(A(r.imagenes_ad).length ? [["imagenes",imgs]] : []), ...(compTab ? [["competencia",compTab]] : []), ...(lpTab ? [["landing",lpTab]] : []), ...(lpImgTab ? [["lpimg",lpImgTab]] : []), ["mercado",merc], ...varTabs.map((s,k)=>["v"+(k+1), s]), ["ganchos",ganchos]];
   return `<div class="rm"><header><h1>${esc(S(r.titulo, r.__input?.nombre || "Hoja de ruta"))}</h1><p>${esc(S(r.subtitulo))}</p>
 <nav class="tabs">${tabs.map(([k,l],j)=>`<button data-k="${k}" class="${j===0?"on":""}">${esc(l)}</button>`).join("")}</nav></header>
 <main>${sections.map(([k,s],j)=>`<section class="tab${j===0?" on":""}" id="${k}">${s}</section>`).join("")}</main></div>`;
