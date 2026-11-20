@@ -2590,6 +2590,7 @@ function rmLandingPrompt(i, r){
   const seguro = r.modo==="seguro", p = r.producto || {}, packs = lpPacks({...r, landing:{}});
   return `Eres el mejor diseñador de landings de venta contraentrega de ${i.pais}. Vas a escribir la landing de un solo producto copiando la ESTRUCTURA y el ESTILO de las landings ganadoras de la tienda Lo Máximo (AMUA, Parrandero, Meduluz, TinniDrop, Revela). Cada pieza de texto es corta, concreta, en español colombiano natural, con emojis medidos.
 PRODUCTO: ${i.nombre}. Verdad del producto: ${i.hace}. Se ve como (inglés): ${S(p.subject_en)}.
+NOMBRE DEL PRODUCTO (regla de Andrés, 2026-11-19): el producto se llama como lo vende la tienda que MÁS vende en Colombia${S(r.competencia?.tienda_top?.nombre) ? `: "${S(r.competencia.tienda_top.nombre)}" (tienda ${S(r.competencia.tienda_top.tienda, "líder")})` : ". Si no tienes ese dato, usa el nombre más común con que se vende en Colombia"}. Pon ese nombre EXACTO en "nombre_largo". Si ese nombre trae una marca propia del producto, úsala en "marca"; si no, inventa una marca corta (nunca una marca registrada de otra empresa).
 Regla del producto: ${S(p.regla)}. Temporada: ${i.temporada || "ninguna"}.
 Precio 1 unidad: ${money(packs[0].precio)}. 2 unidades: ${money(packs[1].precio)}. 3 unidades: ${money(packs[2].precio)}. Envío gratis y pago contra entrega en ${i.pais}. Llega en 2 a 5 días hábiles.
 Lo que funciona del anuncio ganador: ${S(r.ganador?.por_que)}. Ganchos de los videos: ${A(r.ganchos).map(g=>S(g.dice)).filter(Boolean).slice(0,5).join(" | ")}.
