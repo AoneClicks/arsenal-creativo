@@ -395,6 +395,7 @@ body.locked .app{visibility:hidden}
       <div class="head">
         <h1>Arsenal Creativo <span id="profName">· Andrés</span></h1>
         <button type="button" class="lockbtn" id="switchNow" title="Salir de este perfil y entrar con otro">👤 Cambiar perfil</button>
+        <button type="button" class="lockbtn" id="syncNow" title="Traer la versión nueva del panel y las hojas de ruta que se hicieron en otros perfiles">🔄 Cargar cambios</button>
         <button type="button" class="lockbtn" id="iaBtn" title="Conectar o cambiar tu IA" hidden>🤖 Conectar mi IA</button>
         <button type="button" class="lockbtn" id="lockNow" title="Bloquear el panel">🔒 Bloquear</button>
         <div class="pills">
@@ -857,7 +858,7 @@ const data = {
   chat:  store.get(LOCAL.chat, null)  ?? store.get("ac.andres.chat", []),
   saved: store.get(LOCAL.saved, null) ?? store.get("ac.andres.saved", []),
 };
-let db = null, cloud = false;
+let db = null, cloud = false, dbRaw = null; // dbRaw: sin perfil, para lo que comparten todos (compartido_rm)
 const queues = {};
 function enqueue(key, fn){
   queues[key] = (queues[key] || Promise.resolve()).then(fn).catch(()=>setPill("pillSync","warn","Datos: solo en este navegador"));
@@ -878,7 +879,7 @@ function deleteResult(id){
   if(cloud) enqueue("s_"+id, ()=>db.collection("saved").doc(id).delete());
 }
 async function initDb(){
-  try{ db = scopeDb(IS_LOCAL ? makeLocalDb() : await window.claude?.use?.("db")); }catch{ db = null; }
+  try{ dbRaw = IS_LOCAL ? makeLocalDb() : await window.claude?.use?.("db"); db = scopeDb(dbRaw); }catch{ db = null; dbRaw = null; }
   if(!db){ setPill("pillSync","warn","Datos: solo en este navegador"); radarAhoraInit(); return; }
   const slow = setTimeout(()=>setPill("pillSync","warn","Datos: la nube tarda en responder"), 10000);
   try{
@@ -1860,7 +1861,7 @@ function renderHome(){
   $("#homeTop").innerHTML = radarAlertHTML() + (rms.length ? `<h3>Tus productos ganadores</h3><div class="prod-grid">${rms.slice(0,3).map(pcardHTML).join("")}</div>` : "");
 }
 function rmDelete(id){
-  data.roadmaps = data.roadmaps.filter(x=>x.id!==id); rmPersistLocal();
+  rmMarcarBorrada(id); data.roadmaps = data.roadmaps.filter(x=>x.id!==id); rmPersistLocal();
   if(cloud) enqueue("rm_"+id, ()=>db.collection("roadmaps").doc(id).delete());
   renderRoadmaps();
 }
@@ -3310,6 +3311,7 @@ function rmUpdate(r){
   const it = data.roadmaps.find(x=>x.r===r); if(!it) return;
   rmPersistLocal();
   if(cloud && JSON.stringify(it).length < 240000) enqueue("rm_"+it.id, ()=>db.collection("roadmaps").doc(it.id).set(it));
+  it.at = Date.now(); rmCompartir(it);
 }
 const blobToDataURL = b => new Promise((ok, ko)=>{ const f = new FileReader(); f.onload = ()=>ok(f.result); f.onerror = ko; f.readAsDataURL(b); });
 async function lpShrink(file){
@@ -3449,15 +3451,50 @@ function renderRoadmaps(){
 $("#rmList").addEventListener("click", e=>{
   const li = e.target.closest("li[data-id]"); if(!li) return;
   if(e.target.closest(".x")){
-    data.roadmaps = data.roadmaps.filter(x=>x.id!==li.dataset.id); rmPersistLocal();
+    rmMarcarBorrada(li.dataset.id); data.roadmaps = data.roadmaps.filter(x=>x.id!==li.dataset.id); rmPersistLocal();
     if(cloud) enqueue("rm_"+li.dataset.id, ()=>db.collection("roadmaps").doc(li.dataset.id).delete());
     renderRoadmaps(); return;
   }
   const x = data.roadmaps.find(y=>y.id===li.dataset.id); if(x) rmShow(x.r);
 });
-function rmPersistLocal(){ store.set("ac.roadmaps", data.roadmaps.slice(0,12)); }
+function rmPersistLocal(){ store.set("ac.roadmaps", data.roadmaps.slice(0,15)); }
+/* ===== Compartir entre perfiles (pedido de Andrés, 2026-11-20) =====
+   Cada hoja de ruta que se crea o se cambia en el panel de Claude se copia también a "compartido_rm" (sin perfil).
+   El botón "🔄 Cargar cambios" trae a TU perfil las nuevas y las más recientes. Si borras una en tu perfil, se
+   borra solo para ti (queda en "ac.rmBorradas") y no vuelve a aparecer; los demás perfiles la borran a mano.
+   Fuera de Claude (link de GitHub) lo compartido se lee de datos.json, que publica tools/sync.js. */
+const rmBorradasLocal = () => A(store.get("ac.rmBorradas", []));
+function rmMarcarBorrada(id){ const l = rmBorradasLocal(); if(!l.includes(id)){ l.push(id); store.set("ac.rmBorradas", l.slice(-300)); } }
+function rmCompartir(item){
+  if(!cloud || !dbRaw || !item?.id) return;
+  const doc = {...item, autor: PID, at: item.at || Date.now()};
+  if(JSON.stringify(doc).length < 240000) enqueue("sh_"+item.id, ()=>dbRaw.collection("compartido_rm").doc(item.id).set(doc));
+}
+async function rmTraerCompartido(){
+  if(cloud && dbRaw){ const s = await dbRaw.collection("compartido_rm").orderBy("at","desc").limit(40).get(); return s.docs.map(d=>({...d.data(), id:d.id})); }
+  const r = await fetch("datos.json?t=" + Date.now(), {cache:"no-store"}); if(!r.ok) throw new Error("datos.json " + r.status);
+  return A((await r.json()).roadmaps);
+}
+async function cargarCambios(btn){
+  const t0 = btn ? btn.textContent : ""; if(btn){ btn.disabled = true; btn.textContent = "🔄 Cargando…"; }
+  let nuevas = 0, act = 0;
+  try{
+    const lista = await rmTraerCompartido(), borr = rmBorradasLocal();
+    for(const x of lista){
+      if(!x?.id || !x.r || RM_BORRADAS.includes(x.id) || borr.includes(x.id)) continue;
+      const it = {id:x.id, nombre:x.nombre, at:x.at, r:x.r}, i = data.roadmaps.findIndex(y=>y.id===x.id);
+      if(i < 0){ data.roadmaps.push(it); nuevas++; }
+      else if((+x.at||0) > (+data.roadmaps[i].at||0)){ data.roadmaps[i] = it; act++; } else continue;
+      if(cloud && JSON.stringify(it).length < 240000) enqueue("rm_"+it.id, ()=>db.collection("roadmaps").doc(it.id).set(it));
+    }
+    data.roadmaps.sort((a,b)=>(+b.at||0)-(+a.at||0)); rmPersistLocal(); renderRoadmaps(); try{ renderProducts(); renderHome(); }catch{}
+    if(cloud) try{ await radarLoadCloud?.(); }catch{}
+    toast(nuevas || act ? `Listo: ${nuevas} hoja(s) de ruta nueva(s) y ${act} actualizada(s).` : "Ya tienes todo al día.");
+  }catch(e){ toast("No se pudieron cargar los cambios: " + S(e?.message||e)); }
+  if(btn){ btn.disabled = false; btn.textContent = t0; }
+}
 function rmSave(item){
-  data.roadmaps.unshift(item); rmPersistLocal(); renderRoadmaps();
+  data.roadmaps.unshift(item); rmPersistLocal(); renderRoadmaps(); rmCompartir(item);
   if(cloud && JSON.stringify(item).length < 240000) enqueue("rm_"+item.id, ()=>db.collection("roadmaps").doc(item.id).set(item));
 }
 
@@ -3604,6 +3641,9 @@ async function rmLoadCloud(){
 }
 renderRoadmaps();
 
+// Botón "🔄 Cargar cambios": en Claude trae lo compartido al instante; fuera de Claude recarga el panel (versión nueva) y después trae lo compartido.
+document.getElementById("syncNow").addEventListener("click", e=>{ if(cloud){ cargarCambios(e.currentTarget); return; } try{ sessionStorage.setItem("ac.cargar","1"); }catch{} location.replace(location.pathname + "?v=" + Date.now() + location.hash); });
+try{ if(sessionStorage.getItem("ac.cargar")){ sessionStorage.removeItem("ac.cargar"); setTimeout(()=>cargarCambios(document.getElementById("syncNow")), 1500); } }catch{}
 /* ================= Arranque ================= */
 renderTasks(); renderSaved(); renderStudio(); renderChat();
 go(location.hash.slice(1) || store.get("ac.view","inicio"), false);
