@@ -2953,9 +2953,10 @@ function rmBody(r){
   // Pestaña aparte con los prompts de las fotos de la landing (pedido de Andrés, 2026-11-19), para hacerlas en Google Flow.
   let lpImgTab = "";
   if(r.landing){ try{ const sl = lpSlots(r);
-    if(sl.length) lpImgTab = `<h2>📸 Prompts para img de landing</h2><div class="card hero"><div class="big" style="font-size:1.6rem">📸</div><div>Estos prompts son <b>solo para las fotos de la landing</b> (no para los anuncios). Hazlas en <b>Google Flow</b>: adjunta la foto real del producto (o la hoja de producto <b>P0</b>), pega el prompt y genera en <b>cuadrado 1:1</b>. Después súbelas en la pestaña <b>🛒 Landing</b>, cada una en su lugar, con <b>Subir foto</b>.</div></div>
-<p>Son <b>${sl.length} fotos</b>, en el orden en que salen en la landing.</p>
-${sl.map((f,j)=>pb(`Foto ${j+1} · ${S(f.donde)}`, `<span>Qué muestra:</span> ${esc(S(f.alt))}${r.landing.__fotos?.[f.id] ? " · ✅ ya está puesta" : ""}`, lpPromptFoto(f, r))).join("")}`; }catch(e){ lpImgTab = ""; } }
+    if(sl.length) lpImgTab = `<h2>📸 Prompts para img de landing</h2><div class="card hero"><div class="big" style="font-size:1.6rem">📸</div><div>Estos prompts son <b>solo para las fotos de la landing</b> (no para los anuncios). Hazlas en <b>Google Flow</b>: adjunta la foto real del producto (o la hoja de producto <b>P0</b>), pega el prompt y genera en <b>cuadrado 1:1</b>. Cuando la tengas, toca <b>Subir foto</b> en esa misma tarjeta: la foto se pone sola en su puesto de la landing y la vista previa de abajo se actualiza.</div></div>
+<p>Son <b>${sl.length} fotos</b>, en el orden en que salen en la landing. Cada tarjeta dice <b>dónde va</b>.</p>
+<details class="card"><summary><b>👀 Ver cómo va quedando la landing</b></summary><iframe class="lp-frame" title="Vista previa de la landing" srcdoc="${esc(landingHTML(r))}"></iframe></details>
+${sl.map((f,j)=>pb(`Foto ${j+1} · ${S(f.donde)}`, `<span>📍 Va en:</span> ${esc(S(f.donde))} · <span>Qué muestra:</span> ${esc(S(f.alt))}<span class="lp-up" data-slot="${esc(S(f.id))}"></span>`, lpPromptFoto(f, r))).join("")}`; }catch(e){ lpImgTab = ""; } }
   if(r.__input && !r.__radar){ try{ lpTab = lpTabHTML(r, pb); }catch(e){ lpTab = `<h2>🛒 Landing de ventas</h2><div class="warn">No se pudo mostrar la landing: ${esc(S(e?.message||e))}. El resto de la hoja de ruta funciona normal.</div>`; } }
   const tabs = [["inicio","Inicio"], ...(r.meta ? [["meta","📣 Cómo pautar en Meta"]] : []), ...(A(r.imagenes_ad).length ? [["imagenes","🖼️ Anuncios de imagen"]] : []), ...(compTab ? [["competencia","🕵️ Competencia"]] : []), ...(lpTab ? [["landing","🛒 Landing"]] : []), ...(lpImgTab ? [["lpimg","📸 Prompts img landing"]] : []), ["mercado","Mercado y números"], ...vs.map((v,k)=>["v"+(k+1), `${S(v.id,"V"+(k+1))} · ${S(v.nombre)}`]), ["ganchos","Ganchos"]];
 
@@ -3289,8 +3290,7 @@ function lpWire(root, r){
 <label>ID del Pixel de Meta (ya trae el de Aoneclicks 1; cámbialo solo si usas otro)<input class="lp-px" inputmode="numeric" placeholder="123456789012345" value="${esc(L.__pixel)}"></label>
 <div class="row"><button type="button" class="pri lp-ai">🎨 Crear las fotos con IA</button><button type="button" class="pri lp-dl">⬇️ Descargar landing (HTML)</button>${canPub ? `<button type="button" class="lp-pub">🚀 Publicar en GitHub</button>` : ""}</div>
 <div class="st lp-st">${canPub ? `Cuando te guste, toca <b>Publicar en GitHub</b>. Solo con tu autorización Claude la sube a <b>${esc(LP_BASE + slug)}/</b> para que la uses en Meta.` : "Para publicarla en GitHub ábrela desde el panel de Claude. Aquí puedes descargarla en HTML."}</div>`;
-  const frame = root.querySelector(".lp-frame");
-  const refresh = ()=>{ if(frame) frame.srcdoc = landingHTML(r); };
+  const refresh = ()=>{ const h = landingHTML(r); root.querySelectorAll(".lp-frame").forEach(fr=>{ fr.srcdoc = h; }); };
   ctrl.querySelector(".lp-tema").addEventListener("change", e=>{ L.tema = e.target.value; rmUpdate(r); refresh(); });
   ctrl.querySelector(".lp-ai").addEventListener("click", async e=>{
     const b = e.currentTarget, st = ctrl.querySelector(".lp-st"), cfg = keyCfg();
@@ -3306,8 +3306,7 @@ function lpWire(root, r){
         const small = await lpShrink(await geminiFoto(cfg, lpPromptAuto(f, r, !!ref), ref));
         let src; if(assetsCap){ const up = await assetsCap.upload(small, {type:"image/jpeg"}); src = "/_blob/" + up.id; } else src = await blobToDataURL(small);
         L.__fotos[f.id] = src; rmUpdate(r); refresh(); ok++;
-        const sp = root.querySelector(`.lp-up[data-slot="${CSS.escape(S(f.id))}"]`);
-        if(sp){ sp.querySelector("img")?.remove(); sp.insertAdjacentHTML("afterbegin", `<img src="${esc(src)}" alt="">`); const bb = sp.querySelector("button"); if(bb) bb.textContent = "Cambiar foto"; }
+        root.querySelectorAll(`.lp-up[data-slot="${CSS.escape(S(f.id))}"]`).forEach(sp=>{ sp.querySelector("img")?.remove(); sp.insertAdjacentHTML("afterbegin", `<img src="${esc(src)}" alt="">`); const bb = sp.querySelector("button"); if(bb) bb.textContent = "✅ Puesta · cambiar"; });
       }catch(err){ fail++; lastErr = err; if(["google_expired","bad_key"].includes(err?.code)) break; }
     }
     b.disabled = false; b.textContent = "🎨 Crear las fotos con IA";
@@ -3346,7 +3345,7 @@ function lpWire(root, r){
   }
   root.querySelectorAll(".lp-up").forEach(sp=>{
     const slot = sp.dataset.slot, cur = L.__fotos[slot];
-    sp.innerHTML = `${cur ? `<img src="${esc(cur)}" alt="">` : ""}<button type="button">${cur ? "Cambiar foto" : "Subir foto"}</button><input type="file" accept="image/*" hidden>`;
+    sp.innerHTML = `${cur ? `<img src="${esc(cur)}" alt="">` : ""}<button type="button">${cur ? "✅ Puesta · cambiar" : "📤 Subir foto"}</button><input type="file" accept="image/*" hidden>`;
     const inp = sp.querySelector("input"), btn = sp.querySelector("button");
     btn.addEventListener("click", ()=>inp.click());
     inp.addEventListener("change", async ()=>{
@@ -3358,8 +3357,8 @@ function lpWire(root, r){
         if(assetsCap){ const up = await assetsCap.upload(small, {type:"image/jpeg"}); src = "/_blob/" + up.id; }
         else src = await blobToDataURL(small);
         L.__fotos[slot] = src; rmUpdate(r); refresh();
-        sp.querySelector("img")?.remove(); sp.insertAdjacentHTML("afterbegin", `<img src="${esc(src)}" alt="">`);
-        btn.textContent = "Cambiar foto";
+        root.querySelectorAll(`.lp-up[data-slot="${CSS.escape(slot)}"]`).forEach(x=>{ x.querySelector("img")?.remove(); x.insertAdjacentHTML("afterbegin", `<img src="${esc(src)}" alt="">`); const bx = x.querySelector("button"); if(bx) bx.textContent = "✅ Puesta · cambiar"; });
+        toast("Foto puesta en la landing.");
       }catch(e){ btn.textContent = "No se subió · reintenta"; }
       btn.disabled = false; inp.value = "";
     });
