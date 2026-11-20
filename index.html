@@ -2788,6 +2788,40 @@ function lpPromptFoto(f, r){ const p = r.producto || {};
 [REFERENCE]: P0 (keep the product identical)
 [PRODUCT]: ${S(p.lock_en)}
 [EXCLUDE]: ${EXCL_P}`; }
+/* Fotos automáticas (pedido de Andrés, 2026-11-19): el panel crea cada foto de la landing con el modelo de imágenes
+   de Gemini (con la cuenta de Google conectada) usando la foto real del producto como referencia, y la sube sola. */
+async function geminiImageModels(cfg){
+  const c = store.get("ac.gimg", null);
+  if(c && c.t > Date.now() - 86400000 && A(c.m).length) return c.m;
+  let names = [];
+  try{ const j = await keyFetch("https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000", {headers:geminiAuth(cfg)});
+    names = A(j.models).filter(m=>A(m.supportedGenerationMethods).includes("generateContent")).map(m=>S(m.name).replace(/^models\//,"")); }
+  catch(e){ if(e?.code==="google_expired") throw e; }
+  const ver = x => +(S(x).match(/gemini-(\d+(?:\.\d+)?)/)||[0,0])[1];
+  const m = names.filter(x=>/^gemini-.*image/.test(x)).sort((a,b)=> (/flash/.test(b)-/flash/.test(a)) || ver(b)-ver(a) || (/preview/.test(a)-/preview/.test(b)));
+  if(m.length) store.set("ac.gimg", {t:Date.now(), m});
+  return m.length ? m : ["gemini-2.5-flash-image"];
+}
+async function geminiFoto(cfg, prompt, ref){
+  const parts = [{text:prompt}]; if(ref) parts.push({inline_data:{mime_type:ref.type, data:ref.data}});
+  const body = JSON.stringify({contents:[{role:"user", parts}], generationConfig:{responseModalities:["IMAGE"], imageConfig:{aspectRatio:"1:1"}}});
+  let last = null;
+  for(const model of (await geminiImageModels(cfg)).slice(0,3)){
+    const ctrl = new AbortController(), tt = setTimeout(()=>ctrl.abort(), 120000);
+    try{
+      const j = await keyFetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {method:"POST", headers:{"content-type":"application/json", ...geminiAuth(cfg)}, body}, ctrl.signal);
+      const cand = A(j.candidates)[0], p = A(cand?.content?.parts).find(x=>x.inlineData || x.inline_data), d = p && (p.inlineData || p.inline_data);
+      if(d?.data){ const bin = atob(d.data), u = new Uint8Array(bin.length); for(let k=0;k<bin.length;k++) u[k] = bin.charCodeAt(k); return new Blob([u], {type: d.mimeType || d.mime_type || "image/png"}); }
+      last = {code: (j.promptFeedback?.blockReason || /SAFETY|PROHIBITED|IMAGE_SAFETY/.test(S(cand?.finishReason))) ? "refused" : "empty_completion"};
+    }catch(e){ last = ctrl.signal.aborted ? {code:"upstream_error", message:"Google tardó demasiado creando la foto"} : e; if(["google_expired","bad_key"].includes(e?.code)) throw e; }
+    finally{ clearTimeout(tt); }
+  }
+  throw last || {code:"empty_completion"};
+}
+function lpPromptAuto(f, r, conRef){
+  const base = lpPromptFoto(f, r).replace(/\[REFERENCE\]:[^\n]*\n?/, conRef ? "[REFERENCE]: the attached photo is the real product; keep its shape, color, material and details identical\n" : "");
+  return "Create this exact square photo for an online store in Colombia. Photorealistic. Absolutely no text, letters, numbers, logos or watermarks anywhere in the image.\n" + base;
+}
 
 function rmNumbers(r){
   const i = r.__input || {};
