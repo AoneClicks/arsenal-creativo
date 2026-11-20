@@ -2727,7 +2727,7 @@ if('IntersectionObserver' in window){document.documentElement.classList.add('js'
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=${T.gf}&display=swap" rel="stylesheet"><style>${css}</style>${pix}</head><body><div class="lp">
 <div class="topbar"><div class="track">${[...top, ...top].map(t=>`<span>${esc(S(t))}</span>`).join("")}</div></div>
 <div class="nav">${esc(marca)}</div>
-${G.length ? `<div class="gal"><div class="gtrack">${G.map(f=>lpFoto(f, fotos)).join("")}</div></div><div class="thumbs">${G.map((f,j)=>`<button type="button" class="${j?"":"on"}" aria-label="Foto ${j+1}">${lpFoto(f, fotos)}</button>`).join("")}</div>` : ""}
+${G.length ? `<div class="gal"><span class="gbadge">🚚 Envío gratis · 💵 Pagas al recibir</span><div class="gtrack">${G.map(f=>lpFoto(f, fotos)).join("")}</div></div><div class="thumbs">${G.map((f,j)=>`<button type="button" class="${j?"":"on"}" aria-label="Foto ${j+1}">${lpFoto(f, fotos)}</button>`).join("")}</div>` : ""}
 <div class="buy">${L.kicker ? `<p class="kicker">${esc(S(L.kicker))}</p>` : ""}<h1>${lpEm(L.titular)}</h1>${L.pregunta ? `<p class="hook2">${lpEm(L.pregunta)}</p>` : ""}
 <ul class="ben">${A(L.beneficios).slice(0,5).map(b=>`<li>${lpEm(b)}</li>`).join("")}</ul>
 <div class="pricebar"><div><div class="k">${seguro ? "Precio" : "Precio de temporada"}</div><div class="p">${money(P1.precio)}</div><div class="k" style="color:var(--muted)">${esc(P1.titulo)}</div></div><div class="r">🚚 Envío gratis<br>💵 Pagas al recibir<br>📦 Producto sellado</div></div>
