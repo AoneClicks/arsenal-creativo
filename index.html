@@ -2620,8 +2620,23 @@ Reglas: 8 chips en ticker (incluye 💵 Pagas al recibir y 🚚 Envío gratis). 
 
 /* ---------- Plantilla HTML ---------- */
 const lpEm = s => esc(S(s)).replace(/\*(.+?)\*/g, "<em>$1</em>");
+/* Fotos guardadas en el navegador (IndexedDB) cuando el panel se usa sin Claude, por ejemplo en GitHub con Gemini
+   (pedido de Andrés, 2026-11-19). En la hoja de ruta queda "idb:<id>" y la foto vive en este navegador. */
+const LP_IDB = {db:null, cache:{}};
+function lpIdb(){ if(!LP_IDB.db) LP_IDB.db = new Promise((ok, ko)=>{ const q = indexedDB.open("ac-fotos", 1); q.onupgradeneeded = ()=>q.result.createObjectStore("f"); q.onsuccess = ()=>ok(q.result); q.onerror = ()=>ko(q.error); }); return LP_IDB.db; }
+async function lpIdbPut(blob){ const id = "idb:" + Date.now().toString(36) + Math.random().toString(36).slice(2,7), d = await lpIdb();
+  await new Promise((ok, ko)=>{ const tx = d.transaction("f","readwrite"); tx.objectStore("f").put(blob, id); tx.oncomplete = ok; tx.onerror = ()=>ko(tx.error); });
+  LP_IDB.cache[id] = URL.createObjectURL(blob); return id; }
+async function lpIdbGet(id){ const d = await lpIdb(); return await new Promise((ok, ko)=>{ const q = d.transaction("f").objectStore("f").get(id); q.onsuccess = ()=>ok(q.result || null); q.onerror = ()=>ko(q.error); }); }
+async function lpIdbLoad(r){ let n = 0; for(const v of Object.values(r?.landing?.__fotos || {})){ if(/^idb:/.test(S(v)) && !LP_IDB.cache[v]){ try{ const b = await lpIdbGet(v); if(b){ LP_IDB.cache[v] = URL.createObjectURL(b); n++; } }catch{} } } return n; }
+const lpSrc = v => /^idb:/.test(S(v)) ? (LP_IDB.cache[v] || "") : S(v);
+// Guarda una foto: en Claude va a sus archivos; sin Claude, en el navegador (IndexedDB); si eso falla, dentro de la hoja de ruta.
+async function lpGuardarFoto(small){
+  if(assetsCap){ const up = await assetsCap.upload(small, {type:"image/jpeg"}); return "/_blob/" + up.id; }
+  try{ return await lpIdbPut(small); }catch{ return await blobToDataURL(small); }
+}
 function lpFoto(f, fotos, cls){
-  const src = fotos?.[S(f?.id)];
+  const src = lpSrc(fotos?.[S(f?.id)]);
   if(src) return `<img class="${cls||""}" src="${esc(src)}" alt="${esc(S(f?.alt))}" loading="lazy">`;
   return `<div class="ph ${cls||""}"><span>${esc(S(f?.e,"📷"))}</span><small>Foto: ${esc(S(f?.alt,"del producto"))}</small></div>`;
 }
@@ -3265,6 +3280,7 @@ async function lpShrink(file){
 async function lpStandalone(r){
   let html = landingHTML(r);
   for(const [slot, src] of Object.entries(r.landing?.__fotos || {})){
+    if(/^idb:/.test(S(src))){ try{ const b = await lpIdbGet(src); if(b){ const d = await blobToDataURL(b), u = lpSrc(src); if(u) html = html.split(`"${u}"`).join(`"${d}"`); } }catch{} continue; }
     if(!/^\/_blob\//.test(S(src))) continue;
     try{ const d = await blobToDataURL(await (await fetch(src)).blob()); html = html.split(`"${src}"`).join(`"${d}"`); }catch{}
   }
@@ -3291,6 +3307,8 @@ function lpWire(root, r){
 <div class="row"><button type="button" class="pri lp-ai">🎨 Crear las fotos con IA</button><button type="button" class="pri lp-dl">⬇️ Descargar landing (HTML)</button>${canPub ? `<button type="button" class="lp-pub">🚀 Publicar en GitHub</button>` : ""}</div>
 <div class="st lp-st">${canPub ? `Cuando te guste, toca <b>Publicar en GitHub</b>. Solo con tu autorización Claude la sube a <b>${esc(LP_BASE + slug)}/</b> para que la uses en Meta.` : "Para publicarla en GitHub ábrela desde el panel de Claude. Aquí puedes descargarla en HTML."}</div>`;
   const refresh = ()=>{ const h = landingHTML(r); root.querySelectorAll(".lp-frame").forEach(fr=>{ fr.srcdoc = h; }); };
+  // Fotos guardadas en este navegador: se cargan y se pintan en la vista previa y en los botones.
+  lpIdbLoad(r).then(n=>{ if(!n) return; refresh(); root.querySelectorAll(".lp-up").forEach(sp=>{ const im = sp.querySelector("img"), v = L.__fotos[sp.dataset.slot]; if(im && v) im.src = lpSrc(v); }); });
   ctrl.querySelector(".lp-tema").addEventListener("change", e=>{ L.tema = e.target.value; rmUpdate(r); refresh(); });
   ctrl.querySelector(".lp-ai").addEventListener("click", async e=>{
     const b = e.currentTarget, st = ctrl.querySelector(".lp-st"), cfg = keyCfg();
@@ -3298,15 +3316,15 @@ function lpWire(root, r){
     const faltan = lpSlots(r).filter(f=>!L.__fotos[f.id]);
     if(!faltan.length){ st.textContent = "Todas las fotos ya están puestas. Para cambiar una, usa Cambiar foto."; return; }
     let ref = null;
-    if(L.__fotos.ref){ try{ const bl = await (await fetch(L.__fotos.ref)).blob(); ref = {type:bl.type || "image/jpeg", data:await blobToB64(bl)}; }catch{} }
+    if(L.__fotos.ref){ try{ const bl = await (await fetch(lpSrc(L.__fotos.ref))).blob(); ref = {type:bl.type || "image/jpeg", data:await blobToB64(bl)}; }catch{} }
     b.disabled = true; let ok = 0, fail = 0, lastErr = null;
     for(let n = 0; n < faltan.length; n++){
       const f = faltan[n]; b.textContent = `Creando foto ${n+1} de ${faltan.length}…`;
       try{
         const small = await lpShrink(await geminiFoto(cfg, lpPromptAuto(f, r, !!ref), ref));
-        let src; if(assetsCap){ const up = await assetsCap.upload(small, {type:"image/jpeg"}); src = "/_blob/" + up.id; } else src = await blobToDataURL(small);
+        const src = await lpGuardarFoto(small);
         L.__fotos[f.id] = src; rmUpdate(r); refresh(); ok++;
-        root.querySelectorAll(`.lp-up[data-slot="${CSS.escape(S(f.id))}"]`).forEach(sp=>{ sp.querySelector("img")?.remove(); sp.insertAdjacentHTML("afterbegin", `<img src="${esc(src)}" alt="">`); const bb = sp.querySelector("button"); if(bb) bb.textContent = "✅ Puesta · cambiar"; });
+        root.querySelectorAll(`.lp-up[data-slot="${CSS.escape(S(f.id))}"]`).forEach(sp=>{ sp.querySelector("img")?.remove(); sp.insertAdjacentHTML("afterbegin", `<img src="${esc(lpSrc(src))}" alt="">`); const bb = sp.querySelector("button"); if(bb) bb.textContent = "✅ Puesta · cambiar"; });
       }catch(err){ fail++; lastErr = err; if(["google_expired","bad_key"].includes(err?.code)) break; }
     }
     b.disabled = false; b.textContent = "🎨 Crear las fotos con IA";
@@ -3335,7 +3353,7 @@ function lpWire(root, r){
     let armed = false;
     pub.addEventListener("click", async ()=>{
       if(!L.__wa || L.__wa.length < 10){ st.textContent = "Primero escribe el WhatsApp que recibe los pedidos."; return; }
-      if(Object.values(L.__fotos).some(v=>/^data:/.test(S(v)))){ st.textContent = "Hay fotos que no quedaron guardadas en el panel. Súbelas otra vez desde el panel de Claude antes de publicar."; return; }
+      if(Object.values(L.__fotos).some(v=>/^(data|idb):/.test(S(v)))){ st.textContent = "Hay fotos que no quedaron guardadas en el panel. Súbelas otra vez desde el panel de Claude antes de publicar."; return; }
       if(!armed){ armed = true; pub.textContent = "Toca otra vez para confirmar"; st.innerHTML = `¿Publicar <b>${esc(S(L.marca))}</b> en <b>${esc(LP_BASE + slug)}/</b>? ${lpSlots(r).some(f=>!L.__fotos[f.id]) ? "⚠️ Aún faltan fotos: saldrán recuadros en su lugar. " : ""}Toca otra vez para confirmar.`; setTimeout(()=>{ if(armed){ armed = false; pub.textContent = "🚀 Publicar en GitHub"; } }, 8000); return; }
       armed = false; pub.disabled = true; pub.textContent = "Enviando…";
       const doc = {slug, nombre:S(r.__input?.nombre), marca:S(L.marca), estado:"pendiente", at:Date.now(), wa:L.__wa, pixel:L.__pixel, fotos:L.__fotos, url:LP_BASE + slug + "/", html:landingHTML(r)};
@@ -3345,7 +3363,7 @@ function lpWire(root, r){
   }
   root.querySelectorAll(".lp-up").forEach(sp=>{
     const slot = sp.dataset.slot, cur = L.__fotos[slot];
-    sp.innerHTML = `${cur ? `<img src="${esc(cur)}" alt="">` : ""}<button type="button">${cur ? "✅ Puesta · cambiar" : "📤 Subir foto"}</button><input type="file" accept="image/*" hidden>`;
+    sp.innerHTML = `${cur ? `<img src="${esc(lpSrc(cur))}" alt="">` : ""}<button type="button">${cur ? "✅ Puesta · cambiar" : "📤 Subir foto"}</button><input type="file" accept="image/*" hidden>`;
     const inp = sp.querySelector("input"), btn = sp.querySelector("button");
     btn.addEventListener("click", ()=>inp.click());
     inp.addEventListener("change", async ()=>{
@@ -3353,11 +3371,9 @@ function lpWire(root, r){
       btn.textContent = "Subiendo…"; btn.disabled = true;
       try{
         const small = await lpShrink(f);
-        let src;
-        if(assetsCap){ const up = await assetsCap.upload(small, {type:"image/jpeg"}); src = "/_blob/" + up.id; }
-        else src = await blobToDataURL(small);
+        const src = await lpGuardarFoto(small);
         L.__fotos[slot] = src; rmUpdate(r); refresh();
-        root.querySelectorAll(`.lp-up[data-slot="${CSS.escape(slot)}"]`).forEach(x=>{ x.querySelector("img")?.remove(); x.insertAdjacentHTML("afterbegin", `<img src="${esc(src)}" alt="">`); const bx = x.querySelector("button"); if(bx) bx.textContent = "✅ Puesta · cambiar"; });
+        root.querySelectorAll(`.lp-up[data-slot="${CSS.escape(slot)}"]`).forEach(x=>{ x.querySelector("img")?.remove(); x.insertAdjacentHTML("afterbegin", `<img src="${esc(lpSrc(src))}" alt="">`); const bx = x.querySelector("button"); if(bx) bx.textContent = "✅ Puesta · cambiar"; });
         toast("Foto puesta en la landing.");
       }catch(e){ btn.textContent = "No se subió · reintenta"; }
       btn.disabled = false; inp.value = "";
