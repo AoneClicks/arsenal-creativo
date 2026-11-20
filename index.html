@@ -2619,11 +2619,13 @@ const lpPrecio = (C, n) => C > 0 ? Math.floor((n * C + 75000 + 10000 * (n - 1)) 
 /* Productos por MEDIDA (pedido de Andrés, 2026-11-20, como la landing de Lo Máximo del forro): si landing.medidas trae
    [{t:"3 puestos", r:"190 a 230 cm", costo:55000, badge:"LA MÁS PEDIDA"}], el cliente escoge su medida y el precio de cada
    una es costo de esa medida + $75.000 (regla de Andrés), en vez de paquetes de 1, 2 y 3 unidades. */
-const lpMedidas = r => A(r.landing?.medidas).filter(m=>S(m.t) && +m.costo > 0);
+// Cada medida trae su costo en Dropi (precio = costo + $75.000) o un "extra": cuánto sube sobre la medida base, como hace Lo Máximo
+// (base = costo del producto + $75.000; ej. forro: 1 puesto base, 2 puestos +5.000, 3 y 4 puestos +19.000, en L +81.000).
+const lpMedidas = r => A(r.landing?.medidas).filter(m=>S(m.t) && (+m.costo > 0 || m.extra !== undefined));
 function lpPacks(r){
   const C = +r.__input?.costo || 0, L = r.landing || {}, P1 = +r.__precio || lpPrecio(C, 1);
   const med = lpMedidas(r);
-  if(med.length) return med.map(m=>{ const precio = lpPrecio(+m.costo, 1); return {n:1, titulo:S(m.t), sub:S(m.r), badge:S(m.badge), precio, antes:0, ahorro:0, cu:precio, medida:true, icono:S(m.icono, S(m.t).match(/\d+/)?.[0] || "L")}; });
+  if(med.length) return med.map(m=>{ const precio = +m.costo > 0 ? lpPrecio(+m.costo, 1) : P1 + (+m.extra || 0); return {n:1, titulo:S(m.t), sub:S(m.r), badge:S(m.badge), precio, antes:0, ahorro:0, cu:precio, medida:true, icono:S(m.icono, S(m.t).match(/\d+/)?.[0] || "L")}; });
   const base = A(L.packs).length ? A(L.packs).slice(0,3) : [{n:1,titulo:"",sub:"Para empezar"},{n:2,titulo:"",sub:"El más pedido",badge:"MÁS PEDIDO"},{n:3,titulo:"",sub:"Mejor precio",badge:"MEJOR PRECIO"}];
   return base.map((p,k)=>{ const n = Math.max(1, Math.round(+p.n || k+1)); const precio = n===1 ? P1 : (lpPrecio(C, n) || P1*n); const antes = n>1 ? P1*n : 0;
     return {n, titulo:S(p.titulo, n + (n===1 ? " unidad" : " unidades")), sub:S(p.sub), badge:S(p.badge), precio, antes, ahorro: antes ? antes - precio : 0, cu: Math.round(precio / n)}; });
