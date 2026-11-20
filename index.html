@@ -3284,6 +3284,28 @@ function lpWire(root, r){
   const frame = root.querySelector(".lp-frame");
   const refresh = ()=>{ if(frame) frame.srcdoc = landingHTML(r); };
   ctrl.querySelector(".lp-tema").addEventListener("change", e=>{ L.tema = e.target.value; rmUpdate(r); refresh(); });
+  ctrl.querySelector(".lp-ai").addEventListener("click", async e=>{
+    const b = e.currentTarget, st = ctrl.querySelector(".lp-st"), cfg = keyCfg();
+    if(!cfg || cfg.prov!=="gemini"){ st.innerHTML = "Para crear las fotos solo, conecta <b>Gemini con tu cuenta de Google</b> (botón 🤖 de arriba). Después toca otra vez este botón."; return; }
+    const faltan = lpSlots(r).filter(f=>!L.__fotos[f.id]);
+    if(!faltan.length){ st.textContent = "Todas las fotos ya están puestas. Para cambiar una, usa Cambiar foto."; return; }
+    let ref = null;
+    if(L.__fotos.ref){ try{ const bl = await (await fetch(L.__fotos.ref)).blob(); ref = {type:bl.type || "image/jpeg", data:await blobToB64(bl)}; }catch{} }
+    b.disabled = true; let ok = 0, fail = 0, lastErr = null;
+    for(let n = 0; n < faltan.length; n++){
+      const f = faltan[n]; b.textContent = `Creando foto ${n+1} de ${faltan.length}…`;
+      try{
+        const small = await lpShrink(await geminiFoto(cfg, lpPromptAuto(f, r, !!ref), ref));
+        let src; if(assetsCap){ const up = await assetsCap.upload(small, {type:"image/jpeg"}); src = "/_blob/" + up.id; } else src = await blobToDataURL(small);
+        L.__fotos[f.id] = src; rmUpdate(r); refresh(); ok++;
+        const sp = root.querySelector(`.lp-up[data-slot="${CSS.escape(S(f.id))}"]`);
+        if(sp){ sp.querySelector("img")?.remove(); sp.insertAdjacentHTML("afterbegin", `<img src="${esc(src)}" alt="">`); const bb = sp.querySelector("button"); if(bb) bb.textContent = "Cambiar foto"; }
+      }catch(err){ fail++; lastErr = err; if(["google_expired","bad_key"].includes(err?.code)) break; }
+    }
+    b.disabled = false; b.textContent = "🎨 Crear las fotos con IA";
+    st.textContent = !ok && lastErr ? "No se pudieron crear las fotos: " + aiErr(lastErr) + " Si tu cuenta de Google no tiene el modelo de imágenes de Gemini, hazlas en Google Flow con los prompts de abajo."
+      : fail ? `Listo: ${ok} fotos creadas; ${fail} no salieron. Toca otra vez para reintentar esas.` : `Listo: ${ok} fotos creadas y puestas en la landing. Revísalas y cambia la que no te guste.`;
+  });
   ctrl.querySelector(".lp-wa").addEventListener("change", e=>{ L.__wa = e.target.value.replace(/\D/g,""); e.target.value = L.__wa; store.set("ac.lwa", L.__wa); rmUpdate(r); refresh(); });
   ctrl.querySelector(".lp-px").addEventListener("change", e=>{ L.__pixel = e.target.value.replace(/\D/g,""); e.target.value = L.__pixel; store.set("ac.lpixel", L.__pixel); rmUpdate(r); refresh(); });
   ctrl.querySelector(".lp-dl").addEventListener("click", async e=>{
