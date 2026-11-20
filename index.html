@@ -2731,6 +2731,7 @@ ${G.length ? `<div class="gal"><span class="gbadge">🚚 Envío gratis · 💵 P
 <div class="buy">${L.kicker ? `<p class="kicker">${esc(S(L.kicker))}</p>` : ""}<h1>${lpEm(L.titular)}</h1>${L.pregunta ? `<p class="hook2">${lpEm(L.pregunta)}</p>` : ""}
 <ul class="ben">${A(L.beneficios).slice(0,5).map(b=>`<li>${lpEm(b)}</li>`).join("")}</ul>
 <div class="pricebar"><div><div class="k">${seguro ? "Precio" : "Precio de temporada"}</div><div class="p">${money(P1.precio)}</div><div class="k" style="color:var(--muted)">${esc(P1.titulo)}</div></div><div class="r">🚚 Envío gratis<br>💵 Pagas al recibir<br>📦 Producto sellado</div></div>
+<p class="eta">📦 Pide hoy y te llega entre el <b id="eta1">2</b> y el <b id="eta2">5.º día hábil</b></p>
 ${packs[1] ? `<button type="button" class="combo" data-buy="1">🎁 Lleva ${esc(packs[1].titulo.toLowerCase())} por <b>${money(packs[1].precio)}</b> y ahorra ${money(packs[1].ahorro)} →</button>` : ""}
 <button type="button" class="cta" data-buy=""><b>${esc(cta)}</b><small>Envío gratis y pago contra entrega</small></button>
 <div class="mini"><span>Envío gratis</span><span>Pagas al recibir</span><span>Llega en 2 a 5 días</span></div></div>
