@@ -2742,7 +2742,7 @@ ${secciones}
 ${A(L.faq).length ? `<section class="sec b1"><div class="wrap"><p class="eyebrow">PREGUNTAS FRECUENTES</p><h2>Resolvemos tus dudas</h2>${A(L.faq).map(f=>`<details><summary>${esc(S(f.q))}</summary><p>${esc(S(f.a))}</p></details>`).join("")}</div></section>` : ""}
 <section class="sec deep final"><div class="wrap"><h2>${lpEm(S(L.cierre?.titulo, "Pídelo hoy"))}</h2><p class="lead">${esc(S(L.cierre?.sub, "Te llega gratis y lo pagas cuando lo recibas."))}</p><button type="button" class="cta" data-buy=""><b>${esc(cta)}</b><small>Envío gratis y pago contra entrega</small></button><div class="mini" style="color:var(--deeptxt)"><span>Envío gratis</span><span>Pagas al recibir</span><span>Producto sellado</span></div></div></section>
 <p class="legal">${esc(marca)} · ${esc(S(L.nombre_largo))}. ${esc(S(L.legal, seguro ? "No es un medicamento ni reemplaza la consulta médica. Los resultados varían según cada persona. Las fotos son de referencia." : "Las fotos son de referencia."))}</p>
-<button type="button" class="cta sticky off" data-buy=""><b>${esc(cta)}</b><small>Pago contra entrega · Envío gratis</small></button>
+<div class="sbar off"><div class="pp"><small>Hoy</small><b>${money(P1.precio)}</b></div><button type="button" class="cta" data-buy=""><b>${esc(cta)}</b><small>Pagas al recibir · Envío gratis</small></button></div>
 </div>
 <div class="ov" id="ov"><div class="fp" role="dialog" aria-label="Hacer pedido"><button type="button" class="x" aria-label="Cerrar">×</button><h3>${esc(marca)}</h3><p class="s" style="margin:0 0 8px;color:var(--muted)">✓ Pagas al recibir · ✓ Envío gratis</p>
 <label>¿Cuántos quieres?</label><div class="offers">${offer}</div>
