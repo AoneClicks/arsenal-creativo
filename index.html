@@ -3278,6 +3278,7 @@ async function lpShrink(file){
 }
 // La landing descargable lleva las fotos dentro del archivo (no depende del panel).
 async function lpStandalone(r){
+  try{ await lpIdbLoad(r); }catch{}
   let html = landingHTML(r);
   for(const [slot, src] of Object.entries(r.landing?.__fotos || {})){
     if(/^idb:/.test(S(src))){ try{ const b = await lpIdbGet(src); if(b){ const d = await blobToDataURL(b), u = lpSrc(src); if(u) html = html.split(`"${u}"`).join(`"${d}"`); } }catch{} continue; }
