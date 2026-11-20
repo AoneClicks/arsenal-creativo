@@ -1152,7 +1152,7 @@ async function callGemini(cfg, msgs, imgs, fnTools, web, opts, json){
   }
   const m = await geminiModels(cfg, false);
   const chain = geminiChain(m, opts.modelTier || "default").slice(0, opts.__webTry ? 2 : 6);
-  // Respaldo en paralelo: si un modelo no contesta en 6 s, se pregunta también al siguiente y gana el primero que responda.
+  // Respaldo en paralelo: si un modelo no contesta en 8 s (90 s en respuestas largas en JSON), se pregunta también al siguiente y gana el primero que responda.
   // El primero que trae respuesta "reclama" la carrera y los demás se cancelan (así las tareas no se anotan dos veces).
   return await new Promise((resolve, reject) => {
     const race = {winner:null, ctrls:[]};
@@ -1176,19 +1176,20 @@ async function callGemini(cfg, msgs, imgs, fnTools, web, opts, json){
           if(!race.winner) launch();
           if(running<=0 && next>=chain.length && !race.winner) finish(reject, last || {code:"upstream_error", message:"Ningún modelo de Gemini respondió"});
         });
-      clearTimeout(timer); timer = setTimeout(()=>{ if(!race.winner) launch(); }, 6000);
+      clearTimeout(timer); timer = setTimeout(()=>{ if(!race.winner) launch(); }, json ? 90000 : 8000);
     };
     if(!chain.length) return finish(reject, {code:"bad_model", message:"No hay modelos de Gemini disponibles para esta cuenta"});
     launch();
   });
 }
-// Una llamada normal (no en vivo: en estas cuentas el modo en vivo de Google tarda mucho más). Límite: 30 s por intento.
-async function gemCall(url, init, signal){
+// Una llamada normal (no en vivo: en estas cuentas el modo en vivo de Google tarda mucho más). Límite por intento: 60 s en el chat y
+// 4 minutos en las respuestas largas en JSON (hoja de ruta, landing), porque Gemini tarda más de 30 s en escribirlas (arreglo 2026-11-20).
+async function gemCall(url, init, signal, ms=30000){
   const ctrl = new AbortController(); let timedOut = false;
-  const timer = setTimeout(()=>{ timedOut = true; ctrl.abort(); }, 30000);
+  const timer = setTimeout(()=>{ timedOut = true; ctrl.abort(); }, ms);
   const onAbort = () => ctrl.abort(); signal?.addEventListener?.("abort", onAbort);
   try{ return await keyFetch(url, init, ctrl.signal); }
-  catch(e){ if(timedOut) throw {code:"upstream_error", message:"Google no respondió en 30 segundos"}; if(signal?.aborted) throw {code:"cancelled"}; throw e; }
+  catch(e){ if(timedOut) throw {code:"upstream_error", message:"Google no respondió en " + Math.round(ms/1000) + " segundos"}; if(signal?.aborted) throw {code:"cancelled"}; throw e; }
   finally{ clearTimeout(timer); signal?.removeEventListener?.("abort", onAbort); }
 }
 async function callGemini1(cfg, model, msgs, imgs, fnTools, web, opts, json, race, me){
@@ -1205,7 +1206,7 @@ async function callGemini1(cfg, model, msgs, imgs, fnTools, web, opts, json, rac
   status("Usando " + model + (web ? " · buscando en la web con Google…" : ""));
   for(let turn = 0; turn < 10; turn++){
     const auth = geminiAuth(cfg);
-    const j = await gemCall(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {method:"POST", headers:{"content-type":"application/json", ...auth}, body:JSON.stringify(body)}, opts.signal);
+    const j = await gemCall(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {method:"POST", headers:{"content-type":"application/json", ...auth}, body:JSON.stringify(body)}, opts.signal, json ? 240000 : 60000);
     const cand = A(j.candidates)[0];
     if(!cand){ if(j.promptFeedback?.blockReason) throw {code:"refused"}; throw {code:"empty_completion"}; }
     const parts = A(cand.content?.parts);
