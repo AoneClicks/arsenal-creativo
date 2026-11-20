@@ -3247,6 +3247,7 @@ function lpWire(root, r){
 <div class="st lp-st">${canPub ? `Cuando te guste, toca <b>Publicar en GitHub</b>. Solo con tu autorización Claude la sube a <b>${esc(LP_BASE + slug)}/</b> para que la uses en Meta.` : "Para publicarla en GitHub ábrela desde el panel de Claude. Aquí puedes descargarla en HTML."}</div>`;
   const frame = root.querySelector(".lp-frame");
   const refresh = ()=>{ if(frame) frame.srcdoc = landingHTML(r); };
+  ctrl.querySelector(".lp-tema").addEventListener("change", e=>{ L.tema = e.target.value; rmUpdate(r); refresh(); });
   ctrl.querySelector(".lp-wa").addEventListener("change", e=>{ L.__wa = e.target.value.replace(/\D/g,""); e.target.value = L.__wa; store.set("ac.lwa", L.__wa); rmUpdate(r); refresh(); });
   ctrl.querySelector(".lp-px").addEventListener("change", e=>{ L.__pixel = e.target.value.replace(/\D/g,""); e.target.value = L.__pixel; store.set("ac.lpixel", L.__pixel); rmUpdate(r); refresh(); });
   ctrl.querySelector(".lp-dl").addEventListener("click", async e=>{
