@@ -3704,7 +3704,7 @@ try{ if(sessionStorage.getItem("ac.cargar")){ sessionStorage.removeItem("ac.carg
 /* Versión nueva para todos (pedido de Andrés, 2026-11-23): tools/sync.js publica version.json y escribe aquí la versión
    del panel de GitHub. Al abrir, si hay una más nueva, se recarga solo (y trae lo compartido); si alguien ya está
    trabajando, cada 10 minutos le sale un aviso para actualizar, sin interrumpirlo. En Claude no aplica ("dev"). */
-const PANEL_VER = /*VER*/"dev";
+const PANEL_VER = /*VER*/"145f23605be3";
 function recargarVersion(v){ try{ sessionStorage.setItem("ac.cargar","1"); sessionStorage.setItem("ac.verRec."+v,"1"); }catch{} location.replace(location.pathname + "?v=" + v + location.hash); }
 function avisoVersion(v){
   if(document.getElementById("verAviso")) return;
