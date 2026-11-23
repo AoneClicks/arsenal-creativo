@@ -2108,7 +2108,7 @@ const RM_FLOW_REGLAS = `REGLAS DE GOOGLE FLOW (obligatorias en todos los campos 
 // Energía por defecto de las personas en los anuncios normales (se ve real, alegre y confiable).
 const MOOD_PERSONA = "genuinely happy and energetic, natural warm smile that reaches the eyes, lively expressive gestures, relaxed and trustworthy, like recommending it to a friend";
 const EXCL = "no text, no logos, no watermarks, no brand names, no extra hands, no distorted faces, no CGI look";
-const EXCL_P = EXCL + ", no plastic skin, no beauty filter, no studio lighting, no recognizable real people";
+const EXCL_P = EXCL + ", no plastic skin, no beauty filter, no studio lighting, no public figures";
 
 // Dirección de emoción (pedido de Andrés, 2026-11-12): los videos y avatares se veían tristes o planos.
 // Cada anuncio debe transmitir la emoción que corresponde al producto, sin dejar de verse real y confiable.
@@ -2550,7 +2550,7 @@ function rmPromptA1(a){ return `[STYLE LOCK]: ${PERSON_LOCK}
 [LIGHTING]: bright warm natural light
 [CAMERA]: medium shot
 [ASPECT]: 9:16 vertical
-[EXCLUDE]: ${EXCL}, no plastic skin, no beauty filter, no recognizable real people`; }
+[EXCLUDE]: ${EXCL}, no plastic skin, no beauty filter, no public figures`; }
 function rmPromptF(t, r, a){
   const p = r.producto || {}, per = !!t.persona;
   const subj = per ? `${S(a?.desc_en)}; ${fillProduct(t.subject_en, p)}` : fillProduct(t.subject_en, p);
