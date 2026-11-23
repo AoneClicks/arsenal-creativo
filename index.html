@@ -3701,6 +3701,30 @@ renderRoadmaps();
 // Botón "🔄 Cargar cambios": en Claude trae lo compartido al instante; fuera de Claude recarga el panel (versión nueva) y después trae lo compartido.
 document.getElementById("syncNow").addEventListener("click", e=>{ if(cloud){ cargarCambios(e.currentTarget); return; } try{ sessionStorage.setItem("ac.cargar","1"); }catch{} location.replace(location.pathname + "?v=" + Date.now() + location.hash); });
 try{ if(sessionStorage.getItem("ac.cargar")){ sessionStorage.removeItem("ac.cargar"); setTimeout(()=>cargarCambios(document.getElementById("syncNow")), 1500); } }catch{}
+/* Versión nueva para todos (pedido de Andrés, 2026-11-23): tools/sync.js publica version.json y escribe aquí la versión
+   del panel de GitHub. Al abrir, si hay una más nueva, se recarga solo (y trae lo compartido); si alguien ya está
+   trabajando, cada 10 minutos le sale un aviso para actualizar, sin interrumpirlo. En Claude no aplica ("dev"). */
+const PANEL_VER = /*VER*/"dev";
+function recargarVersion(v){ try{ sessionStorage.setItem("ac.cargar","1"); sessionStorage.setItem("ac.verRec."+v,"1"); }catch{} location.replace(location.pathname + "?v=" + v + location.hash); }
+function avisoVersion(v){
+  if(document.getElementById("verAviso")) return;
+  const b = document.createElement("button"); b.id = "verAviso"; b.type = "button";
+  b.textContent = "🔄 Hay una versión nueva del Arsenal. Toca aquí para actualizar";
+  b.style.cssText = "position:fixed;left:50%;top:12px;transform:translateX(-50%);z-index:9999;background:var(--amber);color:#1b1206;border:0;border-radius:999px;padding:11px 18px;font:inherit;font-weight:800;cursor:pointer;box-shadow:0 10px 30px rgba(0,0,0,.45);max-width:92vw";
+  b.onclick = () => recargarVersion(v); document.body.appendChild(b);
+}
+async function revisarVersion(alAbrir){
+  if(PANEL_VER === "dev" || !/github\.io$/i.test(location.hostname)) return;
+  try{
+    const j = await (await fetch("version.json?t=" + Date.now(), {cache:"no-store"})).json();
+    if(!j || !j.v || j.v === PANEL_VER) return;
+    let yaIntento = false; try{ yaIntento = !!sessionStorage.getItem("ac.verRec." + j.v); }catch{}
+    const ocupado = !!document.getElementById("rmGen")?.disabled;
+    if(alAbrir && !ocupado && !yaIntento) recargarVersion(j.v); else avisoVersion(j.v);
+  }catch{}
+}
+setTimeout(()=>revisarVersion(true), 1500);
+setInterval(()=>revisarVersion(false), 10 * 60 * 1000);
 /* ================= Arranque ================= */
 renderTasks(); renderSaved(); renderStudio(); renderChat();
 go(location.hash.slice(1) || store.get("ac.view","inicio"), false);
