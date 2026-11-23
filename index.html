@@ -2050,7 +2050,9 @@ const money = n => "$" + Math.round(+n||0).toLocaleString("es-CO");
 const S = (x, d="") => (x===undefined || x===null) ? d : String(x);
 const A = x => Array.isArray(x) ? x : [];
 
-const PERSON_LOCK = "Vertical video shot on a modern smartphone, crisp and clean, true to life color. Natural skin texture, handheld, imperfect framing";
+// 2026-11-23: Flow marcaba "privacidad" porque el estilo sonaba a video casero de una persona real. Mismo look, pero dicho como
+// personaje ficticio y adulto creado para un anuncio (así lo pide Google para personas generadas).
+const PERSON_LOCK = "Photorealistic lifestyle ad scene with a fictional adult character created for this ad, vertical casual smartphone-style framing, crisp and clean, true to life color, natural look";
 /* ---------- Filtro de políticas de Google Flow (2026-11-19) ----------
    Flow (Veo / Imagen) rechaza prompts por: marcas o propiedad intelectual, menores de edad (es el filtro más estricto
    y da falsos positivos en escenas familiares), combinaciones que lee como sexuales (mujer + cama + pijama + abrazo),
@@ -2081,6 +2083,14 @@ const FLOW_SAFE = [
   [/\b(hospital|clinic|surgery|operating room)\b/gi, "bright modern room"],
   [/\b(cigarettes?|smoking|vape|vaping|beer|whiske?y|vodka|drunk)\b/gi, "drink"],
   [/\bwine\b(?!\s*(red|color|colored|tone))/gi, "juice"],
+  // Privacidad (2026-11-23): nada que se lea como una persona real o identificable.
+  [/\b((?:Colombian|Latin American|Latina|Latino)\s+(?:wo)?man)\s+from\s+[A-ZÁÉÍÓÚÑ][\wáéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑ][\wáéíóúñ]+)?/g, "$1"],
+  [/\b(same|identical|exact)\s+(face|facial features|person|woman|man|identity)\b/gi, "consistent look of the same fictional character"],
+  [/\b(real|actual)\s+(customer|person|people|woman|man|user|client)s?\b/gi, "fictional character"],
+  [/\b(celebrit(y|ies)|famous|influencer|look[- ]?alike|likeness)\b/gi, "fictional character"],
+  [/\bselfie\b/gi, "front-facing handheld shot"],
+  [/\btestimonial\b/gi, "friendly recommendation"],
+  [/\bA1 for (her|him|the person|them)\b/gi, "A1 is the fictional character reference"],
 ];
 // Solo toca prompts de Flow (los que traen [ACTION], [SUBJECT]…); los textos en español de los anuncios quedan intactos.
 function flowSafe(s){ let t = S(s); if(!/\[(STYLE LOCK|ACTION|SUBJECT|ENVIRONMENT|CAMERA)\]/.test(t)) return t; for(const [re, rep] of FLOW_SAFE) t = t.replace(re, rep); return t.replace(/\badult adult\b/gi, "adult").replace(/\bcomfortable comfortable\b/gi, "comfortable"); }
@@ -2090,11 +2100,12 @@ const RM_FLOW_REGLAS = `REGLAS DE GOOGLE FLOW (obligatorias en todos los campos 
 - Nada que pueda leerse como sexual: nada de pajamas, lingerie ni sleeping/in bed con una persona. Usa "comfortable loungewear" y "resting on the sofa".
 - Nada de violencia ni crimen (thief, intruder, weapon, blood, fight): "someone arrives at the gate".
 - Nada médico (pain, sick, pills, doctor, hospital): usa "discomfort", "tired" y "plain unlabeled container".
-- Nada de alcohol ni cigarrillo, y nunca nombres de personas reales o famosas.`;
+- Nada de alcohol ni cigarrillo, y nunca nombres de personas reales o famosas.
+- PRIVACIDAD (Flow rechaza lo que se lee como una persona real e identificable): las personas son personajes FICTICIOS y adultos creados para el anuncio. Descríbelos por apariencia, ropa y edad ("a 47 year old Colombian woman with warm tan skin and curly brown hair"), sin ciudad de origen, sin nombre, sin "real customer", "selfie" ni "testimonial". Para mantener la misma persona en todas las tomas di "A1 is the fictional character reference" o "consistent look", nunca "same face" ni "identical person".`;
 // Energía por defecto de las personas en los anuncios normales (se ve real, alegre y confiable).
 const MOOD_PERSONA = "genuinely happy and energetic, natural warm smile that reaches the eyes, lively expressive gestures, relaxed and trustworthy, like recommending it to a friend";
 const EXCL = "no text, no logos, no watermarks, no brand names, no extra hands, no distorted faces, no CGI look";
-const EXCL_P = EXCL + ", no plastic skin, no beauty filter, no studio lighting";
+const EXCL_P = EXCL + ", no plastic skin, no beauty filter, no studio lighting, no real or famous people";
 
 // Dirección de emoción (pedido de Andrés, 2026-11-12): los videos y avatares se veían tristes o planos.
 // Cada anuncio debe transmitir la emoción que corresponde al producto, sin dejar de verse real y confiable.
@@ -2530,13 +2541,13 @@ function rmPromptP0(p){ return `[STYLE LOCK]: Clean e-commerce product reference
 [EXCLUDE]: no text, no logos, no watermarks, no hands, no people`; }
 function rmPromptA1(a){ return `[STYLE LOCK]: ${PERSON_LOCK}
 [SUBJECT]: ${S(a?.desc_en)}
-[ACTION]: looking at camera with a big genuine smile, relaxed open posture, one hand in a friendly welcoming gesture
+[ACTION]: fictional adult character for an ad, looking at camera with a big genuine smile, relaxed open posture, one hand in a friendly welcoming gesture
 [MOOD]: ${MOOD_PERSONA}
 [ENVIRONMENT]: ${S(a?.ambiente_en,"a cozy Colombian living room")}
 [LIGHTING]: bright warm natural light
 [CAMERA]: medium shot
 [ASPECT]: 9:16 vertical
-[EXCLUDE]: ${EXCL}, no plastic skin, no beauty filter`; }
+[EXCLUDE]: ${EXCL}, no plastic skin, no beauty filter, no real or famous people`; }
 function rmPromptF(t, r, a){
   const p = r.producto || {}, per = !!t.persona;
   const subj = per ? `${S(a?.desc_en)}; ${fillProduct(t.subject_en, p)}` : fillProduct(t.subject_en, p);
@@ -2878,7 +2889,7 @@ function lpSlots(r){
 const LP_PERSONA = /\b(woman|women|man|men|person|people|mother|mom|father|dad|girl|boy|lady|guy|couple|family|she|her|he|his|child|kid|kids|grandma|grandmother|grandfather|customer|model|adult|friend|friends|wife|husband|son|daughter|baby)\b|mujer|hombre|persona|gente|mam[aá]|madre|pap[aá]|padre|señora|señor|niñ|pareja|familia|abuel|cliente|modelo|amig|esposa|esposo|hij[oa]|beb[eé]/i;
 function lpRefs(f){ const per = LP_PERSONA.test(S(f?.prompt_en) + " " + S(f?.alt));
   return {per, adj: per ? "A1 + P0" : "P0", txt: per ? "A1 + P0 (A1 = la persona de la V1; si quieres otra, la A1 de V2 o V3)" : "P0 (solo la hoja de producto; esta foto no lleva persona)",
-    ref_en: per ? "A1 for the person (same face, hair and age), P0 for the product (keep it identical)" : "P0 (keep the product identical)"}; }
+    ref_en: per ? "A1 is the fictional character reference (keep a consistent look: hair, age and outfit), P0 for the product (keep the product identical)" : "P0 (keep the product identical)"}; }
 function lpPromptFoto(f, r){ const p = r.producto || {};
   return `[STYLE LOCK]: Realistic e-commerce lifestyle photo for a product landing page, true to life color, crisp detail, natural light
 [SUBJECT]: ${fillProduct("{PRODUCTO}", p)}
