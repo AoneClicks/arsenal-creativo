@@ -2060,7 +2060,7 @@ const PERSON_LOCK = "Photorealistic lifestyle ad scene with a fictional adult ch
    en los foros de Google AI. Este filtro cambia SOLO esas palabras por equivalentes seguros; la creatividad no se toca. */
 const FLOW_SAFE = [
   [/\b(an?\s+)?iphone(\s+\d+)?(\s+pro)?(\s+max)?\b/gi, "a modern smartphone"],
-  [/\b(samsung|gopro|netflix|youtube|instagram|tiktok|facebook|coca[- ]?cola|pepsi|disney|pixar|marvel|nike|adidas|apple|jbl|dewalt|makita|lego|barbie|pok[eé]mon|starbucks|mcdonald'?s)\b/gi, "a generic brand-free"],
+  [/\b(samsung|gopro|netflix|youtube|instagram|tiktok|facebook|coca[- ]?cola|pepsi|disney|pixar|marvel|nike|adidas|apple|jbl|dewalt|makita|lego|barbie|pok[eé]mon|starbucks|mcdonald'?s)\b/gi, "a generic"],
   [/\b(grandchildren|grandkids|grandsons?|granddaughters?)\b/gi, "adult grandchildren in their twenties"],
   [/\b(little\s+)?(children|kids|toddlers?|infants?)\b/gi, "adult family members"],
   [/\b(a\s+)?(little\s+)?(child|kid)\b(?!ney)/gi, "a young adult"],
@@ -2088,6 +2088,9 @@ const FLOW_SAFE = [
   [/\b(same|identical|exact)\s+(face|facial features|person|woman|man|identity)\b/gi, "consistent look of the same fictional character"],
   [/\b(real|actual)\s+(customer|person|people|woman|man|user|client)s?\b/gi, "fictional character"],
   [/\b(celebrit(y|ies)|famous|influencer|look[- ]?alike|likeness)\b/gi, "fictional character"],
+  [/,?\s*no brand names?\b/gi, ""],
+  [/\bbrand names?\b/gi, "label text"],
+  [/\bbrand-free\b/gi, "generic"],
   [/\bselfie\b/gi, "front-facing handheld shot"],
   [/\b(?:matches|match|keep|keeps|same|preserve|preserves)\s+(?:the\s+)?(?:anchor\s+|exact\s+)?(?:facial features|face|facial identity|features)\s+(?:from|of|as in)\s+A1\b/gi, "keeps the consistent look of the fictional character from A1"],
   [/\b(?:anchor|her|his|their)\s+(?:facial features|face shape|facial identity)\b/gi, "consistent character look"],
@@ -2098,7 +2101,7 @@ const FLOW_SAFE = [
 // Solo toca prompts de Flow (los que traen [ACTION], [SUBJECT]…); los textos en español de los anuncios quedan intactos.
 function flowSafe(s){ let t = S(s); if(!/\[(STYLE LOCK|ACTION|SUBJECT|ENVIRONMENT|CAMERA)\]/.test(t)) return t; for(const [re, rep] of FLOW_SAFE) t = t.replace(re, rep); return t.replace(/\badult adult\b/gi, "adult").replace(/\bcomfortable comfortable\b/gi, "comfortable"); }
 const RM_FLOW_REGLAS = `REGLAS DE GOOGLE FLOW (obligatorias en todos los campos en inglés, para que Flow no rechace el prompt):
-- Nunca marcas ni nombres registrados (iPhone, Netflix, Disney, Nike…): "a modern smartphone", "a streaming app".
+- Nunca marcas ni nombres registrados (iPhone, Netflix, Disney, Nike…): "a modern smartphone", "a streaming app". Tampoco escribas la palabra "brand" en los prompts (ni "no brand names" ni "brand-free"): Flow rechaza la generación; para etiquetas usa "printed label text".
 - Nunca menores: nada de children, kids, baby, girl, boy, teen, grandkids. Todas las personas son ADULTAS y con edad explícita ("a 32 year old woman"); los hijos y nietos son "adult daughter in her late 20s". Las escenas familiares van solo con adultos.
 - Nada que pueda leerse como sexual: nada de pajamas, lingerie ni sleeping/in bed con una persona. Usa "comfortable loungewear" y "resting on the sofa".
 - Nada de violencia ni crimen (thief, intruder, weapon, blood, fight): "someone arrives at the gate".
@@ -2107,7 +2110,7 @@ const RM_FLOW_REGLAS = `REGLAS DE GOOGLE FLOW (obligatorias en todos los campos 
 - PRIVACIDAD (Flow rechaza lo que se lee como una persona real e identificable): las personas son personajes FICTICIOS y adultos creados para el anuncio. Descríbelos por apariencia, ropa y edad ("a 47 year old Colombian woman with warm tan skin and curly brown hair"), sin ciudad de origen, sin nombre, sin "real customer", "selfie" ni "testimonial". Para mantener la misma persona en todas las tomas di "A1 is the fictional character reference" o "consistent look", nunca "same face" ni "identical person".`;
 // Energía por defecto de las personas en los anuncios normales (se ve real, alegre y confiable).
 const MOOD_PERSONA = "genuinely happy and energetic, natural warm smile that reaches the eyes, lively expressive gestures, relaxed and trustworthy, like recommending it to a friend";
-const EXCL = "no text, no logos, no watermarks, no brand names, no extra hands, no distorted faces, no CGI look";
+const EXCL = "no text, no logos, no watermarks, no extra hands, no distorted faces, no CGI look";
 const EXCL_P = EXCL + ", no plastic skin, no beauty filter, no studio lighting, no public figures";
 
 // Dirección de emoción (pedido de Andrés, 2026-11-12): los videos y avatares se veían tristes o planos.
@@ -2379,7 +2382,7 @@ Responde SOLO con un objeto JSON con esta forma exacta (español, salvo los camp
  "alertas": [{"titulo":"","texto":""}],
  "ganador": {"existe": true, "fuente": "", "tabla": [{"t":"0-3","dice":"","ve":""}], "por_que": "", "le_falta": ""},
  "mercado": {"resumen":"","competidores":[{"nombre":"","precio":"","oferta":"","angulo":"","url":""}],"precio_mercado":"","precio_sugerido":0,"razon_precio":"","cpa_estimado":0,"puntajes":[{"criterio":"Demanda","pct":0,"nota":""},{"criterio":"Efecto wow en video","pct":0,"nota":""},{"criterio":"Margen","pct":0,"nota":""},{"criterio":"Competencia (alto = poco saturado)","pct":0,"nota":""},{"criterio":"Logística y devoluciones","pct":0,"nota":""},{"criterio":"Temporada / urgencia","pct":0,"nota":""}],"potencial_pct":0,"saturacion_pct":0,"saturacion_nota":"","veredicto":"","plan_test":[""],"fuentes":[""]},
- "producto": {"nombre_corto_en":"the product","partes_en":"the product box and the white spray bottle","subject_en":"","detalle_en":"","lock_en":"the product must be exactly identical to the attached reference image: same shape, proportions, colors, materials, textures, details, label and accessories; do not redesign, simplify, recolor, add or remove any part of it","label_en":"keep the exact brand name and typography printed on the box and bottle","motion_lock_en":"the product stays exactly identical to the attached reference image in every frame; it only …; it never glows, floats on its own, opens or changes shape","regla":""},
+ "producto": {"nombre_corto_en":"the product","partes_en":"the product box and the white spray bottle","subject_en":"","detalle_en":"","lock_en":"the product must be exactly identical to the attached reference image: same shape, proportions, colors, materials, textures, details, label and accessories; do not redesign, simplify, recolor, add or remove any part of it","label_en":"keep the printed label text and typography exactly as on the box and bottle","motion_lock_en":"the product stays exactly identical to the attached reference image in every frame; it only …; it never glows, floats on its own, opens or changes shape","regla":""},
  "estilo_en": "${SEG_STYLE}",
  "sonido": {"musica":"","efectos":"","voz":"voz de mujer u hombre colombiano de la edad del público, ritmo pausado","ambient_en":""},
  "dialogo": [{"t":"0:00-0:03","original":"","seguro":"igual"}],
@@ -3207,7 +3210,7 @@ ${sl.map((f,j)=>pb(`Foto ${j+1} · ${S(f.donde)} · Adjuntar ${lpRefs(f).adj}`, 
     const badge = (txt, kind, donde) => { nF++; const L = rmLint(txt, kind); if(L.nivel==="rojo"){ nRojo++; fallas.push([donde, kind==="meta" ? "Guion (Meta)" : "Flow", L.w, "Rojo"]); } if(L.nivel==="amarillo"){ nAma++; fallas.push([donde, kind==="meta" ? "Guion (Meta)" : "Flow", L.w, "Amarillo"]); }
       return L.nivel==="ok" ? `<span class="okb">✓ Auditado</span>` : `<span class="${L.nivel==="rojo"?"badb":"midb"}">⚠ Revisar: “${esc(L.w)}”</span>`; };
     const pbA = (title, adj, text, kind, donde) => { n++; const tx = (kind||"flow")==="flow" ? flowSafe(text) : text; return `<div class="pb"><div class="ph"><b>${esc(title)}</b>${badge(tx, kind||"flow", donde||title)}<button class="cp" data-t="t${n}">Copiar</button></div>${adj ? `<div class="att">${adj}</div>` : ""}<pre id="t${n}">${esc(tx)}</pre></div>`; };
-    const prodLines = `[PRODUCT]: ${S(P.lock_en)}\n[LABEL]: ${S(P.label_en, "keep the exact brand name and typography printed on the product")}`;
+    const prodLines = `[PRODUCT]: ${S(P.lock_en)}\n[LABEL]: ${S(P.label_en, "keep the printed label text and typography exactly as in the reference")}`;
     const promptP0 = `[STYLE LOCK]: clean product reference sheet, realistic product photography
 [ACTION]: ${S(P.partes_en, "the product")} shown in seven angles: front, back, left side, right side, three quarter left, three quarter right, top
 [ENVIRONMENT]: plain light grey seamless background
