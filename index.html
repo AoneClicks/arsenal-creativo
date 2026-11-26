@@ -2512,7 +2512,7 @@ Responde SOLO con un objeto JSON con esta forma exacta (todo en español):
  "presupuesto": [{"campo":"Estrategia de presupuesto","valor":"Presupuesto del conjunto de anuncios o Presupuesto de la campaña Advantage+","nota":""},{"campo":"Tipo de presupuesto","valor":"Presupuesto diario","nota":""},{"campo":"Monto","valor":"","nota":""},{"campo":"Estrategia de puja","valor":"Volumen más alto / Objetivo de costo por resultado / Límite de puja","nota":""}],
  "conjunto": [{"campo":"Ubicación de la conversión","valor":"","nota":""},${wa ? `{"campo":"Apps de mensajes","valor":"marcar solo WhatsApp y elegir el número","nota":""},` : `{"campo":"Evento de conversión","valor":"","nota":""},`}{"campo":"Objetivo de rendimiento","valor":"","nota":"si se deja como viene o cuál elegir"},{"campo":"Costo por resultado deseado","valor":"","nota":""},{"campo":"Calendario / hora de inicio","valor":"","nota":""},{"campo":"Ubicación geográfica","valor":"","nota":""},{"campo":"Edad","valor":"","nota":""},{"campo":"Sexo","valor":"","nota":""},{"campo":"Público (Advantage+ o segmentación detallada)","valor":"","nota":""},{"campo":"Ubicaciones","valor":"","nota":""},{"campo":"Nombre del conjunto","valor":"","nota":""}],
  "anuncio": [{"campo":"Identidad (página de Facebook y cuenta de Instagram)","valor":"","nota":""},{"campo":"Formato","valor":"","nota":""},{"campo":"Medio","valor":"","nota":""},{"campo":"Llamada a la acción","valor":"${wa ? "Enviar mensaje de WhatsApp" : "Comprar"}","nota":""},${wa ? `{"campo":"Plantilla de mensaje (mensaje de bienvenida y preguntas frecuentes)","valor":"","nota":""},` : `{"campo":"Destino / URL","valor":"","nota":""},`}{"campo":"Mejoras de contenido Advantage+","valor":"","nota":""},{"campo":"Subtítulos e idioma","valor":"","nota":""}],
- "copies": [{"va_con":"V1","nombre_anuncio":"V1_muy_G0","titulo":"máx 40 caracteres, enganchable: curiosidad, beneficio o urgencia","descripcion":"máx 30 caracteres, enganchable","texto_principal":"texto principal completo con emojis moderados, beneficio, oferta, pago contraentrega, envío y una invitación a escribir","cta":"${wa ? "Enviar mensaje de WhatsApp" : "Comprar"}"}],
+ "copies": [{"va_con":"V1","nombre_anuncio":"V1_muy_G0","titulo":"máx 40 caracteres, enganchable: curiosidad, beneficio o urgencia","descripcion":"máx 30 caracteres, enganchable","texto_principal":"texto principal completo con emojis moderados, beneficio, oferta, pago contraentrega, envío y una invitación a escribir","cta":"${wa ? "Enviar mensaje de WhatsApp" : "Comprar"}","titulos_alt":["3 títulos más para probar, máx 40 caracteres, cada uno con un gancho distinto: pregunta, beneficio concreto, prueba social u oferta"],"descripciones_alt":["2 descripciones más, máx 30 caracteres"],"gancho_texto":"texto grande para poner encima del video en los primeros 3 segundos, máx 6 palabras, el gancho más fuerte"}],
  "imagenes": [{"id":"IMG1","nombre":"nombre corto del anuncio de imagen","concepto":"qué muestra y por qué detiene el scroll","action_en":"what the product is doing in the photo, in English","environment_en":"Colombian setting, in English","lighting_en":"","camera_en":"","texto_encima":"titular corto en MAYÚSCULAS para poner en Canva o CapCut, dentro de la zona segura","texto_secundario":"línea pequeña con la oferta","titulo":"máx 40 caracteres","descripcion":"máx 30 caracteres","texto_principal":"texto principal del anuncio de imagen"}],
  "titulos_extra": ["5 títulos alternativos enganchables"],
  "descripciones_extra": ["4 descripciones alternativas enganchables"],
@@ -3117,7 +3117,9 @@ ${sl.map((f,j)=>pb(`Foto ${j+1} · ${S(f.donde)} · Adjuntar ${lpRefs(f).adj}`, 
     const d = v.__det;
     let s = `<h2>${esc(S(v.id))} · ${esc(S(v.nombre))} · ${esc(S(v.nivel))}</h2>
 <div class="card"><b>Concepto:</b> ${esc(S(v.concepto))}<br><b>Gancho:</b> ${esc(S(v.gancho))}<br><b>Voz:</b> ${esc(S(d?.voz || v.voz))}</div>`;
-    if(!d) return s + `<div class="warn">Esta variación no se generó completa. <button type="button" class="cp regvar" data-regvar="${k}">🔄 Generar esta variación</button> <small>(funciona dentro del panel, con la IA conectada)</small></div>`;
+    const metaV = rmMetaVideo(r, v, pb);
+    if(!d) return s + metaV + `<div class="warn">Esta variación no se generó completa. <button type="button" class="cp regvar" data-regvar="${k}">🔄 Generar esta variación</button> <small>(funciona dentro del panel, con la IA conectada)</small></div>`;
+    s += metaV;
     s += `<h3>Hoja de producto y ancla</h3><div class="warn">P0 es la misma en las tres variaciones. Si ya la generaste, no la regeneres.</div>`;
     s += pb("P0 · Hoja de producto", att("Adjuntar","la foto real del producto del proveedor"), rmPromptP0(p));
     s += pb("A1 · persona de la variación", att("Adjuntar","nada"), rmPromptA1(d.ancla));
@@ -3241,7 +3243,9 @@ ${prodLines}
     const vTabs = V.map((v,k)=>{
       const d = v.__det, vid = "v" + (k+1);
       let s = `<h2>${esc(S(v.id))} · ${esc(S(v.nombre))} · ${esc(S(v.persona))} · ${esc(S(v.lugar))}</h2><p class="lead">${esc(S(v.descripcion))}</p><p class="tag">Lo que la separa de las otras: ${esc(S(v.separa))}</p>`;
-      if(!d) return s + `<div class="warn">Esta variación no se generó completa. <button type="button" class="cp regvar" data-regvar="${k}">🔄 Generar esta variación</button> <small>(funciona dentro del panel, con la IA conectada)</small></div>`;
+      const metaV = rmMetaVideo(r, v, pb);
+    if(!d) return s + metaV + `<div class="warn">Esta variación no se generó completa. <button type="button" class="cp regvar" data-regvar="${k}">🔄 Generar esta variación</button> <small>(funciona dentro del panel, con la IA conectada)</small></div>`;
+    s += metaV;
       s += `<p class="chips"><a data-goto="${vid}-anclas">Anclas</a><a data-goto="${vid}-escaleta">Escaleta</a><a data-goto="${vid}-imagenes">Imágenes</a><a data-goto="${vid}-clips">Clips</a></p>`;
       const anc = d.ancla || {}, T = A(d.tomas), Cl = A(d.clips), ENV = S(anc.ambiente_en), INT = S(d.interior_en);
       const promptA1 = `[STYLE LOCK]: ${STY}
@@ -3342,6 +3346,28 @@ function rmDocument(r){
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,800&family=DM+Sans:wght@400;700;800&display=swap" rel="stylesheet"><style>html,body{margin:0;background:${r.modo==="seguro" ? "#f6f4ef" : "#FBF3E4"}}${RM_CSS}${r.modo==="seguro" ? TD_CSS : ""}</style></head><body>${rmBody(r)}<script>${RM_SCRIPT}<\/script></body></html>`;
 }
 
+/* Pide un JSON a la IA con reintentos (2026-11-26): si falla o llega incompleto, espera y vuelve a pedirlo. */
+async function rmPedir(mk, ok, o={}){
+  const esperas = [0, 5000, 15000]; let ultimo = null;
+  for(let a = 0; a < esperas.length; a++){
+    if(esperas[a]){ o.log?.(`${o.nombre || "Pedido"}: reintentando (${a+1} de ${esperas.length})…`); await new Promise(res=>setTimeout(res, esperas[a])); }
+    try{ const d = await sample.json(mk(), {modelTier:o.modelTier, signal:o.signal, cache:false}); if(ok(d)) return d; ultimo = {code:"invalid_json"}; }
+    catch(err){ if(err?.code==="cancelled" || o.signal?.aborted) throw {code:"cancelled"}; if(["google_expired","bad_key","no_ai"].includes(err?.code)) throw err; ultimo = err; }
+  }
+  throw ultimo || {code:"invalid_json"};
+}
+/* Lo de Meta para UN video (2026-11-26, pedido de Andrés): título con los mejores ganchos, alternativos, descripción, texto principal y botón. */
+function rmMetaVideo(r, v, pb){
+  const c = A(r.meta?.copies).find(x=>S(x.va_con).trim().toUpperCase()===S(v.id).trim().toUpperCase());
+  if(!c) return r.meta ? "" : `<h3>📣 Para publicar este video en Meta</h3><div class="warn">Los textos de Meta no se generaron. <button type="button" class="cp regmeta">🔄 Generar textos de Meta</button> <small>(funciona dentro del panel, con la IA conectada)</small></div>`;
+  const alt = A(c.titulos_alt).filter(Boolean), dalt = A(c.descripciones_alt).filter(Boolean);
+  return `<h3>📣 Para publicar este video en Meta</h3><div class="card"><b>Nombre del anuncio:</b> ${esc(S(c.nombre_anuncio, S(v.id)))}<br><b>Botón:</b> ${esc(S(c.cta, "Comprar"))}<br><b>Gancho del video:</b> ${esc(S(v.gancho))}${c.gancho_texto ? `<br><b>Texto grande en los primeros 3 segundos:</b> ${esc(S(c.gancho_texto))}` : ""}</div>`
+    + pb("Título principal (el que más engancha)", "", S(c.titulo))
+    + (alt.length ? pb("Títulos para probar (uno por anuncio o en Advantage+)", "", alt.join("\n")) : "")
+    + pb("Descripción", "", S(c.descripcion))
+    + (dalt.length ? pb("Descripciones para probar", "", dalt.join("\n")) : "")
+    + pb("Texto principal", "", S(c.texto_principal));
+}
 /* Cola con N pedidos a la vez (2026-11-26). */
 async function rmPool(jobs, n){ let next = 0; const run = async () => { while(next < jobs.length){ const j = jobs[next++]; await j(); } }; await Promise.all(Array.from({length:Math.min(n, jobs.length)}, run)); }
 /* Genera una variación con reintentos: si Gemini está saturado o la respuesta llega incompleta, espera y vuelve a pedirla. */
@@ -3375,7 +3401,14 @@ function rmShow(r){
     if(ok){ rmUpdate(r); const tab = $("#rmHost").shadowRoot?.querySelector("nav.tabs button.on")?.dataset.k; rmShow(r); if(tab) $("#rmHost").shadowRoot?.querySelector(`nav.tabs button[data-k="${tab}"]`)?.click(); toast(`Listo: ${S(v.id)} generada.`); }
     else { b.disabled = false; b.textContent = "🔄 Reintentar esta variación"; toast("No se pudo generar. Espera un minuto y vuelve a intentar."); }
   }));
-  root.querySelectorAll("button.cp:not(.regvar)").forEach(b=>b.addEventListener("click", async ()=>{
+  root.querySelectorAll("button.regmeta").forEach(b=>b.addEventListener("click", async e=>{
+    e.stopImmediatePropagation();
+    if(!sample){ toast(aiErr({code:"no_ai"})); return; }
+    b.disabled = true; b.textContent = "Generando… (1 a 2 minutos)";
+    try{ r.meta = await rmPedir(()=>rmMetaPrompt(r.__input || {}, r), d=>d && typeof d==="object" && (d.recomendacion || d.campana) && A(d.copies).length, {modelTier: tier==="quick" ? "default" : tier, log: m=>{ b.textContent = m; }}); rmUpdate(r); rmShow(r); toast("Listo: textos de Meta generados."); }
+    catch(err){ b.disabled = false; b.textContent = "🔄 Reintentar"; toast("No se pudo generar: " + aiErr(err)); }
+  }));
+  root.querySelectorAll("button.cp:not(.regvar):not(.regmeta)").forEach(b=>b.addEventListener("click", async ()=>{
     const pre = root.getElementById(b.dataset.t); const t = pre.innerText;
     try{ await navigator.clipboard.writeText(t); b.textContent="Copiado"; b.classList.add("ok"); }
     catch{ const rg=document.createRange(); rg.selectNodeContents(pre); const s=getSelection(); s.removeAllRanges(); s.addRange(rg); b.textContent="Ctrl+C"; }
@@ -3618,13 +3651,13 @@ $("#rmForm").addEventListener("submit", async e=>{
     const vs = A(r.variaciones).slice(0,3);
     vs.forEach((_,k)=>rmStep(k+1,"run")); rmStep(4,"run");
     r.variaciones = vs;
-    const imgJobF = () => sample.json(rmImgPrompt(i, r), {modelTier:tierUse, signal:ctrl.signal, cache:false})
+    const imgJobF = () => rmPedir(()=>rmImgPrompt(i, r), d=>d && A(d.modelos).length, {modelTier:tierUse, signal:ctrl.signal, log:rmLogLine, nombre:"Anuncios de imagen"})
       .then(d=>{ if(d && A(d.modelos).length){ r.imagenes_ad = A(d.modelos).slice(0,4); rmLogLine("4 anuncios de imagen listos"); } })
       .catch(err=>{ if(err?.code==="cancelled") throw err; rmLogLine(`Anuncios de imagen: ${aiErr(err)}`); });
-    const metaJobF = () => sample.json(rmMetaPrompt(i, r), {modelTier:tierUse, signal:ctrl.signal, cache:false})
+    const metaJobF = () => rmPedir(()=>rmMetaPrompt(i, r), d=>d && typeof d==="object" && (d.recomendacion || d.campana) && A(d.copies).length, {modelTier:tierUse, signal:ctrl.signal, log:rmLogLine, nombre:"Meta Ads"})
       .then(d=>{ if(d && typeof d==="object" && (d.recomendacion || d.campana)){ r.meta = d; rmStep(4,"ok"); } else rmStep(4,"bad"); })
       .catch(err=>{ if(err?.code==="cancelled") throw err; rmStep(4,"bad"); rmLogLine(`Meta Ads: ${aiErr(err)}`); });
-    const lpJobF = () => sample.json(rmLandingPrompt(i, r), {modelTier:tierUse, signal:ctrl.signal, cache:false})
+    const lpJobF = () => rmPedir(()=>rmLandingPrompt(i, r), d=>d && d.titular, {modelTier:tierUse, signal:ctrl.signal, log:rmLogLine, nombre:"Landing"})
       .then(d=>{ if(d && d.titular){ r.landing = d; rmLogLine("Landing de ventas lista"); } })
       .catch(err=>{ if(err?.code==="cancelled") throw err; rmLogLine(`Landing: ${aiErr(err)}`); });
     // 2026-11-26: antes iban 6 pedidos largos a la vez y con Gemini algunas variaciones fallaban por el límite por minuto.
@@ -3660,13 +3693,13 @@ async function rmGenerarSeguro(i, file){
     rmStep(0,"ok"); rmLogLine(`Diálogo de ${A(r.dialogo).length} frases · potencial ${Math.round(+r.mercado?.potencial_pct||0)}%`);
     const vs = A(r.variaciones).slice(0,3); r.variaciones = vs;
     vs.forEach((_,k)=>rmStep(k+1,"run")); rmStep(4,"run");
-    const imgJobF = () => sample.json(rmImgPrompt(i, r), {modelTier:tierUse, signal:ctrl.signal, cache:false})
+    const imgJobF = () => rmPedir(()=>rmImgPrompt(i, r), d=>d && A(d.modelos).length, {modelTier:tierUse, signal:ctrl.signal, log:rmLogLine, nombre:"Anuncios de imagen"})
       .then(d=>{ if(d && A(d.modelos).length){ r.imagenes_ad = A(d.modelos).slice(0,4); rmLogLine("4 anuncios de imagen listos"); } })
       .catch(err=>{ if(err?.code==="cancelled") throw err; rmLogLine(`Anuncios de imagen: ${aiErr(err)}`); });
-    const metaJobF = () => sample.json(rmMetaPrompt(i, r), {modelTier:tierUse, signal:ctrl.signal, cache:false})
+    const metaJobF = () => rmPedir(()=>rmMetaPrompt(i, r), d=>d && typeof d==="object" && (d.recomendacion || d.campana) && A(d.copies).length, {modelTier:tierUse, signal:ctrl.signal, log:rmLogLine, nombre:"Meta Ads"})
       .then(d=>{ if(d && typeof d==="object" && (d.recomendacion || d.campana)){ r.meta = d; rmStep(4,"ok"); } else rmStep(4,"bad"); })
       .catch(err=>{ if(err?.code==="cancelled") throw err; rmStep(4,"bad"); rmLogLine(`Meta Ads: ${aiErr(err)}`); });
-    const lpJobF = () => sample.json(rmLandingPrompt(i, r), {modelTier:tierUse, signal:ctrl.signal, cache:false})
+    const lpJobF = () => rmPedir(()=>rmLandingPrompt(i, r), d=>d && d.titular, {modelTier:tierUse, signal:ctrl.signal, log:rmLogLine, nombre:"Landing"})
       .then(d=>{ if(d && d.titular){ r.landing = d; rmLogLine("Landing de ventas lista"); } })
       .catch(err=>{ if(err?.code==="cancelled") throw err; rmLogLine(`Landing: ${aiErr(err)}`); });
     await rmPool([...vs.map((v,k)=>()=>rmGenVariacion(i, r, v, {modelTier:tierUse, signal:ctrl.signal, log:rmLogLine, seguro:true})
@@ -3731,7 +3764,7 @@ try{ if(sessionStorage.getItem("ac.cargar")){ sessionStorage.removeItem("ac.carg
 /* Versión nueva para todos (pedido de Andrés, 2026-11-23): tools/sync.js publica version.json y escribe aquí la versión
    del panel de GitHub. Al abrir, si hay una más nueva, se recarga solo (y trae lo compartido); si alguien ya está
    trabajando, cada 10 minutos le sale un aviso para actualizar, sin interrumpirlo. En Claude no aplica ("dev"). */
-const PANEL_VER = /*VER*/"3d39cc32d4bb";
+const PANEL_VER = /*VER*/"189729874e9b";
 function recargarVersion(v){ try{ sessionStorage.setItem("ac.cargar","1"); sessionStorage.setItem("ac.verRec."+v,"1"); }catch{} location.replace(location.pathname + "?v=" + v + location.hash); }
 function avisoVersion(v){
   if(document.getElementById("verAviso")) return;
