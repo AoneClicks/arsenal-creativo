@@ -3117,7 +3117,7 @@ ${sl.map((f,j)=>pb(`Foto ${j+1} · ${S(f.donde)} · Adjuntar ${lpRefs(f).adj}`, 
     const d = v.__det;
     let s = `<h2>${esc(S(v.id))} · ${esc(S(v.nombre))} · ${esc(S(v.nivel))}</h2>
 <div class="card"><b>Concepto:</b> ${esc(S(v.concepto))}<br><b>Gancho:</b> ${esc(S(v.gancho))}<br><b>Voz:</b> ${esc(S(d?.voz || v.voz))}</div>`;
-    if(!d) return s + `<div class="warn">Esta variación no se pudo generar. Vuelve a generar la hoja de ruta o pídesela al chat.</div>`;
+    if(!d) return s + `<div class="warn">Esta variación no se generó completa. <button type="button" class="cp regvar" data-regvar="${k}">🔄 Generar esta variación</button> <small>(funciona dentro del panel, con la IA conectada)</small></div>`;
     s += `<h3>Hoja de producto y ancla</h3><div class="warn">P0 es la misma en las tres variaciones. Si ya la generaste, no la regeneres.</div>`;
     s += pb("P0 · Hoja de producto", att("Adjuntar","la foto real del producto del proveedor"), rmPromptP0(p));
     s += pb("A1 · persona de la variación", att("Adjuntar","nada"), rmPromptA1(d.ancla));
@@ -3241,7 +3241,7 @@ ${prodLines}
     const vTabs = V.map((v,k)=>{
       const d = v.__det, vid = "v" + (k+1);
       let s = `<h2>${esc(S(v.id))} · ${esc(S(v.nombre))} · ${esc(S(v.persona))} · ${esc(S(v.lugar))}</h2><p class="lead">${esc(S(v.descripcion))}</p><p class="tag">Lo que la separa de las otras: ${esc(S(v.separa))}</p>`;
-      if(!d) return s + `<div class="warn">Esta variación no se pudo generar. Vuelve a generar la hoja de ruta.</div>`;
+      if(!d) return s + `<div class="warn">Esta variación no se generó completa. <button type="button" class="cp regvar" data-regvar="${k}">🔄 Generar esta variación</button> <small>(funciona dentro del panel, con la IA conectada)</small></div>`;
       s += `<p class="chips"><a data-goto="${vid}-anclas">Anclas</a><a data-goto="${vid}-escaleta">Escaleta</a><a data-goto="${vid}-imagenes">Imágenes</a><a data-goto="${vid}-clips">Clips</a></p>`;
       const anc = d.ancla || {}, T = A(d.tomas), Cl = A(d.clips), ENV = S(anc.ambiente_en), INT = S(d.interior_en);
       const promptA1 = `[STYLE LOCK]: ${STY}
@@ -3342,6 +3342,23 @@ function rmDocument(r){
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,800&family=DM+Sans:wght@400;700;800&display=swap" rel="stylesheet"><style>html,body{margin:0;background:${r.modo==="seguro" ? "#f6f4ef" : "#FBF3E4"}}${RM_CSS}${r.modo==="seguro" ? TD_CSS : ""}</style></head><body>${rmBody(r)}<script>${RM_SCRIPT}<\/script></body></html>`;
 }
 
+/* Cola con N pedidos a la vez (2026-11-26). */
+async function rmPool(jobs, n){ let next = 0; const run = async () => { while(next < jobs.length){ const j = jobs[next++]; await j(); } }; await Promise.all(Array.from({length:Math.min(n, jobs.length)}, run)); }
+/* Genera una variación con reintentos: si Gemini está saturado o la respuesta llega incompleta, espera y vuelve a pedirla. */
+async function rmGenVariacion(i, r, v, o={}){
+  const esperas = [0, 5000, 15000], seguro = o.seguro ?? (r.modo === "seguro");
+  let ultimo = null;
+  for(let a = 0; a < esperas.length; a++){
+    if(esperas[a]){ o.log?.(`${S(v.id)}: reintentando (${a+1} de ${esperas.length})…`); await new Promise(res=>setTimeout(res, esperas[a])); }
+    try{
+      const d = await sample.json(seguro ? rmVarPromptSeguro(i, r, v) : rmVarPrompt(i, r, v), {modelTier:o.modelTier, signal:o.signal, cache:false});
+      if(d && typeof d==="object" && A(d.tomas).length){ v.__det = d; return true; }
+      ultimo = {code:"invalid_json"};
+    }catch(err){ if(err?.code==="cancelled" || o.signal?.aborted) throw {code:"cancelled"}; if(["google_expired","bad_key","no_ai"].includes(err?.code)) throw err; ultimo = err; }
+  }
+  if(ultimo) o.log?.(`${S(v.id)}: ${aiErr(ultimo)}`);
+  return false;
+}
 function rmShow(r){
   rmCurrent = r;
   const host = $("#rmHost"); const root = host.shadowRoot || host.attachShadow({mode:"open"});
@@ -3349,7 +3366,16 @@ function rmShow(r){
   root.querySelectorAll("[data-goto]").forEach(a=>a.addEventListener("click", ()=>{ const el = root.getElementById(a.dataset.goto); if(el) el.scrollIntoView({behavior:"smooth", block:"start"}); }));
   const showTab = k => { root.querySelectorAll("section.tab").forEach(s=>s.classList.toggle("on", s.id===k)); root.querySelectorAll("nav.tabs button").forEach(b=>b.classList.toggle("on", b.dataset.k===k)); reveal("rmView"); };
   root.querySelectorAll("nav.tabs button").forEach(b=>b.addEventListener("click", ()=>showTab(b.dataset.k)));
-  root.querySelectorAll("button.cp").forEach(b=>b.addEventListener("click", async ()=>{
+  root.querySelectorAll("button.regvar").forEach(b=>b.addEventListener("click", async e=>{
+    e.stopImmediatePropagation();
+    if(!sample){ toast(aiErr({code:"no_ai"})); return; }
+    const k = +b.dataset.regvar, v = A(r.variaciones)[k]; if(!v) return;
+    b.disabled = true; b.textContent = "Generando… (1 a 3 minutos)";
+    const ok = await rmGenVariacion(r.__input || {}, r, v, {modelTier: tier==="quick" ? "default" : tier, log: m=>{ b.textContent = m; }}).catch(()=>false);
+    if(ok){ rmUpdate(r); const tab = $("#rmHost").shadowRoot?.querySelector("nav.tabs button.on")?.dataset.k; rmShow(r); if(tab) $("#rmHost").shadowRoot?.querySelector(`nav.tabs button[data-k="${tab}"]`)?.click(); toast(`Listo: ${S(v.id)} generada.`); }
+    else { b.disabled = false; b.textContent = "🔄 Reintentar esta variación"; toast("No se pudo generar. Espera un minuto y vuelve a intentar."); }
+  }));
+  root.querySelectorAll("button.cp:not(.regvar)").forEach(b=>b.addEventListener("click", async ()=>{
     const pre = root.getElementById(b.dataset.t); const t = pre.innerText;
     try{ await navigator.clipboard.writeText(t); b.textContent="Copiado"; b.classList.add("ok"); }
     catch{ const rg=document.createRange(); rg.selectNodeContents(pre); const s=getSelection(); s.removeAllRanges(); s.addRange(rg); b.textContent="Ctrl+C"; }
@@ -3592,18 +3618,19 @@ $("#rmForm").addEventListener("submit", async e=>{
     const vs = A(r.variaciones).slice(0,3);
     vs.forEach((_,k)=>rmStep(k+1,"run")); rmStep(4,"run");
     r.variaciones = vs;
-    const imgJob = sample.json(rmImgPrompt(i, r), {modelTier:tierUse, signal:ctrl.signal, cache:false})
+    const imgJobF = () => sample.json(rmImgPrompt(i, r), {modelTier:tierUse, signal:ctrl.signal, cache:false})
       .then(d=>{ if(d && A(d.modelos).length){ r.imagenes_ad = A(d.modelos).slice(0,4); rmLogLine("4 anuncios de imagen listos"); } })
       .catch(err=>{ if(err?.code==="cancelled") throw err; rmLogLine(`Anuncios de imagen: ${aiErr(err)}`); });
-    const metaJob = sample.json(rmMetaPrompt(i, r), {modelTier:tierUse, signal:ctrl.signal, cache:false})
+    const metaJobF = () => sample.json(rmMetaPrompt(i, r), {modelTier:tierUse, signal:ctrl.signal, cache:false})
       .then(d=>{ if(d && typeof d==="object" && (d.recomendacion || d.campana)){ r.meta = d; rmStep(4,"ok"); } else rmStep(4,"bad"); })
       .catch(err=>{ if(err?.code==="cancelled") throw err; rmStep(4,"bad"); rmLogLine(`Meta Ads: ${aiErr(err)}`); });
-    const lpJob = sample.json(rmLandingPrompt(i, r), {modelTier:tierUse, signal:ctrl.signal, cache:false})
+    const lpJobF = () => sample.json(rmLandingPrompt(i, r), {modelTier:tierUse, signal:ctrl.signal, cache:false})
       .then(d=>{ if(d && d.titular){ r.landing = d; rmLogLine("Landing de ventas lista"); } })
       .catch(err=>{ if(err?.code==="cancelled") throw err; rmLogLine(`Landing: ${aiErr(err)}`); });
-    await Promise.all([metaJob, imgJob, lpJob, ...vs.map((v,k)=>sample.json(rmVarPrompt(i, r, v), {modelTier:tierUse, signal:ctrl.signal, cache:false})
-      .then(d=>{ if(d && typeof d==="object"){ v.__det = d; rmStep(k+1,"ok"); } else rmStep(k+1,"bad"); })
-      .catch(err=>{ if(err?.code==="cancelled") throw err; rmStep(k+1,"bad"); rmLogLine(`${S(v.id)}: ${aiErr(err)}`); }))]);
+    // 2026-11-26: antes iban 6 pedidos largos a la vez y con Gemini algunas variaciones fallaban por el límite por minuto.
+    await rmPool([...vs.map((v,k)=>()=>rmGenVariacion(i, r, v, {modelTier:tierUse, signal:ctrl.signal, log:rmLogLine})
+      .then(ok=>rmStep(k+1, ok ? "ok" : "bad"))
+      .catch(err=>{ if(err?.code==="cancelled") throw err; rmStep(k+1,"bad"); rmLogLine(`${S(v.id)}: ${aiErr(err)}`); })), metaJobF, imgJobF, lpJobF], 2);
     rmStep(5,"run");
     const item = {id:uid(), nombre:i.nombre, at:Date.now(), r};
     rmSave(item); rmStep(5,"ok");
@@ -3633,18 +3660,18 @@ async function rmGenerarSeguro(i, file){
     rmStep(0,"ok"); rmLogLine(`Diálogo de ${A(r.dialogo).length} frases · potencial ${Math.round(+r.mercado?.potencial_pct||0)}%`);
     const vs = A(r.variaciones).slice(0,3); r.variaciones = vs;
     vs.forEach((_,k)=>rmStep(k+1,"run")); rmStep(4,"run");
-    const imgJob = sample.json(rmImgPrompt(i, r), {modelTier:tierUse, signal:ctrl.signal, cache:false})
+    const imgJobF = () => sample.json(rmImgPrompt(i, r), {modelTier:tierUse, signal:ctrl.signal, cache:false})
       .then(d=>{ if(d && A(d.modelos).length){ r.imagenes_ad = A(d.modelos).slice(0,4); rmLogLine("4 anuncios de imagen listos"); } })
       .catch(err=>{ if(err?.code==="cancelled") throw err; rmLogLine(`Anuncios de imagen: ${aiErr(err)}`); });
-    const metaJob = sample.json(rmMetaPrompt(i, r), {modelTier:tierUse, signal:ctrl.signal, cache:false})
+    const metaJobF = () => sample.json(rmMetaPrompt(i, r), {modelTier:tierUse, signal:ctrl.signal, cache:false})
       .then(d=>{ if(d && typeof d==="object" && (d.recomendacion || d.campana)){ r.meta = d; rmStep(4,"ok"); } else rmStep(4,"bad"); })
       .catch(err=>{ if(err?.code==="cancelled") throw err; rmStep(4,"bad"); rmLogLine(`Meta Ads: ${aiErr(err)}`); });
-    const lpJob = sample.json(rmLandingPrompt(i, r), {modelTier:tierUse, signal:ctrl.signal, cache:false})
+    const lpJobF = () => sample.json(rmLandingPrompt(i, r), {modelTier:tierUse, signal:ctrl.signal, cache:false})
       .then(d=>{ if(d && d.titular){ r.landing = d; rmLogLine("Landing de ventas lista"); } })
       .catch(err=>{ if(err?.code==="cancelled") throw err; rmLogLine(`Landing: ${aiErr(err)}`); });
-    await Promise.all([metaJob, imgJob, lpJob, ...vs.map((v,k)=>sample.json(rmVarPromptSeguro(i, r, v), {modelTier:tierUse, signal:ctrl.signal, cache:false})
-      .then(d=>{ if(d && typeof d==="object" && A(d.tomas).length){ v.__det = d; rmStep(k+1,"ok"); } else rmStep(k+1,"bad"); })
-      .catch(err=>{ if(err?.code==="cancelled") throw err; rmStep(k+1,"bad"); rmLogLine(`${S(v.id)}: ${aiErr(err)}`); }))]);
+    await rmPool([...vs.map((v,k)=>()=>rmGenVariacion(i, r, v, {modelTier:tierUse, signal:ctrl.signal, log:rmLogLine, seguro:true})
+      .then(ok=>rmStep(k+1, ok ? "ok" : "bad"))
+      .catch(err=>{ if(err?.code==="cancelled") throw err; rmStep(k+1,"bad"); rmLogLine(`${S(v.id)}: ${aiErr(err)}`); })), metaJobF, imgJobF, lpJobF], 2);
     rmStep(5,"run");
     try{ const au = await sample.json(rmAuditPromptSeguro(i, r), {modelTier:tierUse, signal:ctrl.signal, cache:false}); if(au && typeof au==="object") r.auditoria = au; rmStep(5,"ok"); }
     catch(err){ if(err?.code==="cancelled") throw err; rmStep(5,"bad"); rmLogLine("Auditoría: " + aiErr(err) + " (queda la revisión automática de palabras)"); }
@@ -3704,7 +3731,7 @@ try{ if(sessionStorage.getItem("ac.cargar")){ sessionStorage.removeItem("ac.carg
 /* Versión nueva para todos (pedido de Andrés, 2026-11-23): tools/sync.js publica version.json y escribe aquí la versión
    del panel de GitHub. Al abrir, si hay una más nueva, se recarga solo (y trae lo compartido); si alguien ya está
    trabajando, cada 10 minutos le sale un aviso para actualizar, sin interrumpirlo. En Claude no aplica ("dev"). */
-const PANEL_VER = /*VER*/"145f23605be3";
+const PANEL_VER = /*VER*/"3d39cc32d4bb";
 function recargarVersion(v){ try{ sessionStorage.setItem("ac.cargar","1"); sessionStorage.setItem("ac.verRec."+v,"1"); }catch{} location.replace(location.pathname + "?v=" + v + location.hash); }
 function avisoVersion(v){
   if(document.getElementById("verAviso")) return;
